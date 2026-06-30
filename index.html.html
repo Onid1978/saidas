@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Saídas · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<script type="module">
+  // ══ FIREBASE INIT ══
+  // ⚠️ Substitui pelos teus valores reais do Firebase Console
+  // (Definições do projeto → As tuas apps → ícone Web </>)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCL8_5-Xh6QcE4KtYWqx7Kya99o-65FFPI",
+    authDomain: "saidas-app.firebaseapp.com",
+    projectId: "saidas-app",
+    storageBucket: "saidas-app.firebasestorage.app",
+    messagingSenderId: "686711136929",
+    appId: "1:686711136929:web:9d9094852ccb364d84c6e0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // Expõe tudo na window para o script principal (não-módulo) usar
+  window.fb = {
+    db, auth,
+    collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
+    onSnapshot, query, where, arrayUnion, serverTimestamp,
+  };
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.fb.uid = user.uid;
+      window.dispatchEvent(new CustomEvent('fb-ready'));
+    } else {
+      signInAnonymously(auth).catch(err => {
+        console.error('Erro no login anónimo:', err);
+        window.dispatchEvent(new CustomEvent('fb-error', { detail: err }));
+      });
+    }
+  });
+</script>
+<style>
+:root {
+  --bg: #0f0e17;
+  --surface: #1a1927;
+  --surface2: #222133;
+  --surface3: #2a2840;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --text: #f0eff8;
+  --text-muted: #8b8aa0;
+  --text-dim: #5a5970;
+  --accent: #7c3aed;
+  --accent-light: #a78bfa;
+  --accent-bg: rgba(124,58,237,0.12);
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.1);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.1);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.1);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: 'Inter', sans-serif;
+  --font-display: 'Syne', sans-serif;
+  --sidebar-w: 220px;
+  --invite-bg: #7c3aed;
+  --invite-text: #ffffff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ══ TOPBAR ══ */
+.topbar {
+  height: 54px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+}
+.logo { font-family: var(--font-display); font-size: 20px; color: var(--text); letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+.logo-spark { color: var(--accent-light); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.fb-status {
+  font-size: 11px; padding: 4px 10px; border-radius: 20px;
+  font-weight: 500; display: inline-flex; align-items: center; gap: 5px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.fb-status.error { background: var(--red-bg); color: var(--red); }
+.fb-status.loading { background: var(--amber-bg); color: var(--amber); }
+.fb-status.ok { background: var(--green-bg); color: var(--green); }
+
+/* ══ BELL ══ */
+.bell-wrap { position: relative; }
+.bell-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 17px; color: var(--text-muted);
+  transition: all 0.15s;
+}
+.bell-btn:hover { color: var(--text); border-color: var(--accent); }
+.bell-badge {
+  position: absolute; top: -3px; right: -3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--surface);
+}
+.bell-dropdown {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  width: 290px; background: var(--surface2);
+  border: 1px solid var(--border-strong); border-radius: 14px;
+  overflow: hidden; z-index: 300;
+  opacity: 0; transform: translateY(-8px) scale(0.97);
+  pointer-events: none; transition: all 0.18s;
+}
+.bell-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.bell-dh { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; }
+.bell-item { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; display: flex; align-items: flex-start; gap: 10px; }
+.bell-item:last-child { border-bottom: none; }
+.bell-item:hover { background: var(--surface3); }
+.bell-emoji { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+.bell-info { flex: 1; min-width: 0; }
+.bell-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bell-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.bell-status { font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; white-space: nowrap; margin-top: 4px; display: inline-block; }
+.bs-pending { background: var(--amber-bg); color: var(--amber); }
+.bell-empty { padding: 2rem 1rem; text-align: center; font-size: 13px; color: var(--text-dim); }
+
+/* ══ LAYOUT ══ */
+.layout { display: flex; flex: 1; min-height: 0; }
+
+/* ══ SIDEBAR ══ */
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: sticky; top: 54px; height: calc(100vh - 54px);
+  overflow-y: auto; padding: 1rem 0;
+}
+.nav-section-label { font-size: 10px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; padding: 0.75rem 1rem 0.25rem; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 1rem; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer;
+  border: none; background: none; width: 100%; text-align: left;
+  transition: color 0.12s, background 0.12s;
+  border-radius: 0;
+}
+.nav-item i { font-size: 17px; flex-shrink: 0; }
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent-light); background: var(--accent-bg); }
+.nav-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
+.nav-badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+.nav-badge-amber { background: var(--amber); }
+
+/* ══ CONTENT ══ */
+.content { flex: 1; min-width: 0; padding: 1.5rem; overflow-y: auto; height: calc(100vh - 54px); }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ══ PAGE HEADER ══ */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 10px; }
+.page-title { font-family: var(--font-display); font-size: 22px; color: var(--text); display: flex; align-items: center; gap: 10px; }
+.page-title i { color: var(--accent-light); font-size: 22px; }
+
+/* ══ STAT CARDS ══ */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1rem 1.1rem;
+}
+.stat-label { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.stat-val { font-family: var(--font-display), 'Arial Black', sans-serif; font-size: 28px; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.stat-card.accent { border-color: var(--accent); background: var(--accent-bg); }
+.stat-card.green  { border-color: var(--green);  background: var(--green-bg); }
+.stat-card.amber  { border-color: var(--amber);  background: var(--amber-bg); }
+.stat-card.accent .stat-val { color: var(--accent-light); }
+.stat-card.green  .stat-val { color: var(--green); }
+.stat-card.amber  .stat-val { color: var(--amber); }
+
+/* ══ PRÓXIMO EVENTO ══ */
+.next-event {
+  background: linear-gradient(135deg, var(--accent-bg) 0%, var(--surface) 100%);
+  border: 1px solid var(--accent);
+  border-radius: 16px; padding: 1.25rem 1.4rem;
+  margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.25rem;
+}
+.next-emoji { font-size: 40px; flex-shrink: 0; }
+.next-info { flex: 1; min-width: 0; }
+.next-label { font-size: 11px; font-weight: 600; color: var(--accent-light); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+.next-name { font-family: var(--font-display); font-size: 18px; color: var(--text); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.next-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+.next-meta span { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+.next-actions { display: flex; flex-direction: column; gap: 6px; }
+
+/* ══ SECTION LABEL ══ */
+.sec-label {
+  font-size: 11px; font-weight: 600; color: var(--text-dim);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin: 1.25rem 0 0.65rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sec-label i { font-size: 13px; margin-right: 5px; }
+
+/* ══ EVENT CARD ══ */
+.ev-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1rem 1.2rem;
+  margin-bottom: 0.6rem; transition: border-color 0.15s;
+}
+.ev-card:hover { border-color: var(--border-strong); }
+.ev-card.green-left { border-left: 3px solid var(--green); }
+.ev-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+.ev-name { font-size: 15px; font-weight: 500; color: var(--text); }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.badge-open   { background: var(--accent-bg); color: var(--accent-light); }
+.badge-urgent { background: var(--red-bg);    color: var(--red); }
+.badge-done   { background: var(--green-bg);  color: var(--green); }
+.badge-pending{ background: var(--amber-bg);  color: var(--amber); }
+.ev-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.ev-meta span { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-muted); }
+.ev-rsvp { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+.avatars { display: flex; padding-right: 6px; }
+.av { width: 28px; height: 28px; border-radius: 50%; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface); margin-right: -6px; flex-shrink: 0; }
+.av-yes    { background: var(--green-bg);  color: var(--green); }
+.av-later  { background: var(--accent-bg); color: var(--accent-light); }
+.av-pending{ background: var(--amber-bg);  color: var(--amber); }
+.rsvp-text { font-size: 12px; color: var(--text-dim); margin-left: 12px; }
+.ev-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.btn-xs { font-family: var(--font); font-size: 12px; padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; transition: all 0.12s; }
+.btn-xs:hover { background: var(--surface2); color: var(--text); }
+
+/* ══ RESPOSTAS PANEL ══ */
+.resp-panel { background: var(--surface2); border-radius: 12px; border: 1px solid var(--border); margin-top: 0.5rem; overflow: hidden; }
+.resp-panel-header { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.resp-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.resp-item:last-child { border-bottom: none; }
+.resp-info { display: flex; align-items: center; gap: 10px; }
+.resp-av { width: 32px; height: 32px; border-radius: 50%; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.resp-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.resp-phone { font-size: 12px; color: var(--text-dim); }
+.status-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.s-yes   { background: var(--green-bg);  color: var(--green); }
+.s-late  { background: var(--amber-bg);  color: var(--amber); }
+.s-later { background: var(--accent-bg); color: var(--accent-light); }
+.s-none  { background: var(--amber-bg);  color: var(--amber); }
+
+/* ══ BTN BOLEIA ══ */
+.btn-boleia {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+  background: var(--surface2); border: 1px dashed var(--border-strong);
+  color: var(--text-muted); font-family: var(--font); font-size: 13px;
+  cursor: pointer; transition: all 0.15s; justify-content: center;
+}
+.btn-boleia:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-bg); }
+
+/* ══ CARD / FORM ══ */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 0.75rem; }
+.card-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+.card-title i { color: var(--accent-light); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.form-field { display: flex; flex-direction: column; gap: 5px; }
+.form-field.full { grid-column: 1/-1; }
+label { font-size: 12px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; }
+input[type=text], input[type=date], input[type=time], input[type=tel], textarea, input[type=number] {
+  font-family: var(--font); font-size: 14px;
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 9px 11px;
+  color: var(--text); width: 100%; transition: border-color 0.15s;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #6d28d9; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border-strong); }
+.btn-ghost:hover { color: var(--text); background: var(--surface2); }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+.color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.12s, transform 0.12s; }
+.color-swatch:hover, .color-swatch.active { border-color: #fff; transform: scale(1.1); }
+.color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.emoji-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.emoji-opt { font-size: 22px; cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: background 0.1s; }
+.emoji-opt:hover { background: var(--surface2); }
+.emoji-opt.active { background: var(--accent-bg); }
+
+/* ══ ENVELOPE ══ */
+.envelope-scene { display: flex; flex-direction: column; align-items: center; padding: 1rem 1rem 0; }
+.envelope-wrap { width: 300px; position: relative; cursor: pointer; user-select: none; }
+.env-body { width: 100%; height: 190px; background: var(--surface2); border: 1px solid var(--border-strong); border-radius: 6px 6px 10px 10px; position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+.env-body::before { content: ''; position: absolute; bottom: 0; left: 0; right: 0; top: 0; background: linear-gradient(to bottom-right, transparent 49.5%, var(--surface3) 50%) left/50% 100% no-repeat, linear-gradient(to bottom-left, transparent 49.5%, var(--surface3) 50%) right/50% 100% no-repeat; }
+.env-flap { width: 100%; height: 105px; position: absolute; top: -1px; left: 0; transform-origin: top center; transform: rotateX(0deg); transition: transform 0.55s cubic-bezier(0.4,0,0.2,1); z-index: 10; overflow: hidden; }
+.env-flap-inner { width: 100%; height: 190px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px 6px 0 0; clip-path: polygon(0 0, 100% 0, 50% 100%); position: relative; }
+.env-flap-inner::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, var(--accent-bg) 0%, transparent 60%); }
+.env-card { position: absolute; top: 20px; left: 16px; right: 16px; background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 12px; transform: translateY(0px); transition: transform 0.55s cubic-bezier(0.4,0,0.2,1) 0.1s; z-index: 5; text-align: center; }
+.env-card-emoji { font-size: 26px; }
+.env-card-name { font-family: var(--font-display); font-size: 13px; color: var(--accent-light); margin-top: 4px; line-height: 1.3; }
+.env-hint { font-size: 12px; color: var(--text-dim); margin-top: 10px; display: flex; align-items: center; gap: 5px; justify-content: center; }
+.envelope-wrap.open .env-flap { transform: rotateX(-175deg); }
+.envelope-wrap.open .env-card { transform: translateY(-75px); }
+.invite-content { width: 300px; margin-top: 1rem; max-height: 0; overflow: hidden; transition: max-height 0.5s ease, opacity 0.3s ease; opacity: 0; }
+.invite-content.visible { max-height: 800px; opacity: 1; }
+.invite-wrap { border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+.invite-banner { background: var(--invite-bg); padding: 1.5rem 1.25rem 1.25rem; text-align: center; }
+.invite-emoji-big { font-size: 40px; display: block; margin-bottom: 8px; }
+.invite-title { font-family: var(--font-display); font-size: 19px; color: var(--invite-text); line-height: 1.2; margin-bottom: 4px; }
+.invite-sub { font-size: 13px; color: var(--invite-text); opacity: 0.75; }
+.invite-body { background: var(--surface); padding: 1rem 1.25rem; }
+.invite-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; font-size: 14px; }
+.invite-row:last-child { margin-bottom: 0; }
+.invite-row i { font-size: 17px; color: var(--accent-light); margin-top: 1px; flex-shrink: 0; }
+.invite-row span { color: var(--text); line-height: 1.5; }
+.invite-deadline { background: var(--amber-bg); border-top: 1px solid rgba(245,158,11,0.2); padding: 9px 1.25rem; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--amber); }
+.invite-form-area { background: var(--surface2); padding: 1rem 1.25rem; }
+.invite-form-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px; }
+.rsvp-btns { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.rsvp-btn { width: 100%; padding: 10px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 7px; transition: opacity 0.15s, transform 0.1s; }
+.rsvp-btn:hover { opacity: 0.85; }
+.rsvp-yes   { background: var(--green);    color: #fff; }
+.rsvp-late  { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,0.3); }
+.rsvp-later { background: var(--accent-bg); color: var(--accent-light); border: 1px solid rgba(124,58,237,0.3); }
+.rsvp-no    { background: transparent; color: var(--text-muted); border: 1px solid var(--border-strong); }
+.atraso-input-wrap { display: none; background: var(--surface3); border-radius: var(--radius-sm); padding: 12px; margin-top: 8px; }
+.atraso-input-wrap.visible { display: block; }
+.link-box { display: flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 1rem; }
+.link-url { font-size: 13px; color: var(--accent-light); font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 18px; padding: 2px 4px; transition: color 0.12s; }
+.link-btn:hover { color: var(--text); }
+
+/* ══ SUGESTÕES ══ */
+.sugg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.sugg-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; cursor: pointer; transition: border-color 0.15s, transform 0.12s; }
+.sugg-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.sugg-icon-big { font-size: 26px; margin-bottom: 8px; }
+.sugg-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.sugg-desc { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+
+/* ══ GRUPOS ══ */
+.grupo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s; }
+.grupo-card:hover { border-color: var(--accent); }
+.grupo-emoji { font-size: 28px; flex-shrink: 0; }
+.grupo-info { flex: 1; }
+.grupo-nome { font-size: 14px; font-weight: 500; color: var(--text); }
+.grupo-membros { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.grupo-actions { display: flex; gap: 6px; }
+.membro-list { display: flex; flex-direction: column; gap: 8px; margin-top: 0.75rem; }
+.membro-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface2); border-radius: 10px; }
+.membro-av { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-light); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.membro-nome { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.membro-tel { font-size: 12px; color: var(--text-dim); }
+
+/* ══ BOLEIAS ══ */
+.boleia-choice { display: flex; gap: 10px; margin-bottom: 1.25rem; }
+.boleia-choice-btn { flex: 1; padding: 1rem; border-radius: 12px; border: 2px solid var(--border-strong); background: var(--surface2); cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s; color: var(--text); font-family: var(--font); }
+.boleia-choice-btn:hover { border-color: var(--accent); background: var(--accent-bg); }
+.boleia-choice-btn.selected { border-color: var(--accent); background: var(--accent-bg); }
+.boleia-choice-btn i { font-size: 24px; display: block; margin-bottom: 6px; color: var(--accent-light); }
+.boleia-choice-btn span { font-size: 13px; font-weight: 500; }
+.boleia-form { display: none; }
+.boleia-form.visible { display: block; }
+.segmented { display: flex; gap: 4px; background: var(--surface2); border-radius: 8px; padding: 3px; }
+.seg-btn { flex: 1; padding: 6px 8px; border-radius: 6px; border: none; background: transparent; color: var(--text-muted); font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s; text-align: center; }
+.seg-btn.active { background: var(--accent); color: #fff; }
+.boleia-section { margin-top: 1.25rem; }
+.boleia-section-title { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.boleia-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+.boleia-av { width: 36px; height: 36px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-light); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.boleia-info { flex: 1; min-width: 0; }
+.boleia-nome { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.boleia-detalhe { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.boleia-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; padding: 2px 7px; border-radius: 20px; font-weight: 500; margin-right: 4px; }
+.bt-dar   { background: var(--green-bg);  color: var(--green); }
+.bt-pedir { background: var(--amber-bg);  color: var(--amber); }
+.bt-ida   { background: var(--accent-bg); color: var(--accent-light); }
+.bt-volta { background: rgba(14,165,233,0.12); color: #38bdf8; }
+.bt-ambos { background: rgba(236,72,153,0.1); color: #f472b6; }
+
+/* ══ MODAIS ══ */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 400; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; visibility: hidden; }
+.modal-overlay.open { opacity: 1; pointer-events: auto; visibility: visible; }
+.modal-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 700px; padding: 1.5rem 1.5rem 2rem; transform: translateY(40px); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); max-height: 90vh; overflow-y: auto; }
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 40px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 1.25rem; }
+.modal-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 8px; }
+.modal-title i { color: var(--accent-light); }
+.contactos-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.contactos-item:last-child { border-bottom: none; }
+.contactos-copy-row { padding: 12px 14px; background: var(--surface3); border-top: 1px solid var(--border); display: flex; gap: 8px; }
+
+/* ══ CONVITES RECEBIDOS PAGE ══ */
+.convite-recebido-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 1rem 1.2rem; margin-bottom: 0.6rem;
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.convite-recebido-card:hover { border-color: var(--accent); }
+.convite-recebido-card.sem-resposta { border-left: 3px solid var(--red); }
+.convite-recebido-card.mais-tarde  { border-left: 3px solid var(--amber); }
+.convite-recebido-card.confirmado  { border-left: 3px solid var(--green); }
+.cr-emoji { font-size: 30px; flex-shrink: 0; }
+.cr-info { flex: 1; min-width: 0; }
+.cr-nome { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.cr-meta span { display: flex; align-items: center; gap: 4px; }
+.cr-badge { flex-shrink: 0; }
+
+/* ══ EMPTY ══ */
+.empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); }
+.empty i { font-size: 36px; margin-bottom: 10px; display: block; }
+.empty p { font-size: 14px; line-height: 1.5; }
+
+/* ══ TOAST ══ */
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface2); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 10px 16px; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; z-index: 500; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+
+/* ══ CONVITE 2-COL ══ */
+.convite-layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; align-items: start; }
+
+/* ══ RESPONSIVE ══ */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .layout { flex-direction: column; }
+  .content { padding: 1rem; height: auto; overflow-y: unset; }
+  .convite-layout { grid-template-columns: 1fr; }
+  .next-event { flex-direction: column; align-items: flex-start; }
+  .next-actions { flex-direction: row; flex-wrap: wrap; }
+}
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-field.full { grid-column: 1; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .stat-val { font-size: 22px; }
+  .envelope-wrap, .invite-content { width: 100%; }
+  .ev-actions { width: 100%; justify-content: flex-start; }
+  .next-event { gap: 0.75rem; }
+}
+/* Fix input date/time em tema escuro */
+input[type=date]::-webkit-calendar-picker-indicator,
+input[type=time]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+/* Convite layout ajuste para ecrãs médios */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .convite-layout { grid-template-columns: 1fr 280px; }
+}
+
+/* ══ MOBILE NAV ══ */
+.mobile-nav {
+  display: none; position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  z-index: 200; padding: 6px 0 env(safe-area-inset-bottom);
+}
+.mobile-nav-inner { display: flex; justify-content: space-around; }
+.mobile-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 10px; border: none; background: none; color: var(--text-muted); font-family: var(--font); font-size: 10px; font-weight: 500; cursor: pointer; transition: color 0.12s; border-radius: 8px; }
+.mobile-nav-btn i { font-size: 20px; }
+.mobile-nav-btn.active { color: var(--accent-light); }
+@media (max-width: 900px) {
+  .mobile-nav { display: block; }
+  .content { padding-bottom: 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">saídas <span class="logo-spark">✦</span></div>
+  <div class="topbar-right">
+    <div class="fb-status" id="fb-status" style="display:none;"></div>
+    <div class="bell-wrap" id="bell-wrap">
+      <button class="bell-btn" onclick="toggleBell()" aria-label="Convites recebidos">
+        <i class="ti ti-bell"></i>
+      </button>
+      <div class="bell-badge" id="bell-badge">1</div>
+      <div class="bell-dropdown" id="bell-dropdown">
+        <div class="bell-dh">Convites recebidos</div>
+        <div id="bell-lista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section-label">Principal</div>
+    <button class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <i class="ti ti-layout-dashboard"></i> Dashboard
+    </button>
+    <button class="nav-item" onclick="showPage('eventos')" id="nav-eventos">
+      <i class="ti ti-calendar-event"></i> Os meus eventos
+    </button>
+    <button class="nav-item" onclick="showPage('convites')" id="nav-convites">
+      <i class="ti ti-inbox"></i> Convites recebidos
+      <span class="nav-badge" id="nav-badge-convites" style="display:none;">0</span>
+    </button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Criar</div>
+    <button class="nav-item" onclick="showPage('criar')" id="nav-criar">
+      <i class="ti ti-plus"></i> Nova saída
+    </button>
+    <button class="nav-item" onclick="showPage('convite')" id="nav-convite">
+      <i class="ti ti-envelope"></i> Ver convite
+    </button>
+    <button class="nav-item" onclick="showPage('sugestoes')" id="nav-sugestoes">
+      <i class="ti ti-sparkles"></i> Sugestões
+    </button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-label">Gestão</div>
+    <button class="nav-item" onclick="showPage('grupos')" id="nav-grupos">
+      <i class="ti ti-users-group"></i> Grupos
+    </button>
+  </nav>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+        <button class="btn btn-primary" onclick="showPage('criar')"><i class="ti ti-plus"></i> Nova saída</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row" id="stats-row"></div>
+
+      <!-- Próximo evento -->
+      <div id="next-event-wrap"></div>
+
+      <!-- Resumo de todos os eventos -->
+      <div class="sec-label" style="margin-top:0"><span><i class="ti ti-calendar-event"></i> Os meus eventos</span></div>
+      <div id="dash-eventos-lista"></div>
+
+      <!-- Convites pendentes -->
+      <div id="dash-convites-wrap"></div>
+    </div>
+
+    <!-- ══ OS MEUS EVENTOS ══ -->
+    <div class="page" id="page-eventos">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-calendar-event"></i> Os meus eventos</div>
+        <button class="btn btn-primary" onclick="showPage('criar')"><i class="ti ti-plus"></i> Nova saída</button>
+      </div>
+      <div id="eventos-container"></div>
+    </div>
+
+    <!-- ══ CONVITES RECEBIDOS ══ -->
+    <div class="page" id="page-convites">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-inbox"></i> Convites recebidos</div>
+      </div>
+      <div id="convites-container"></div>
+    </div>
+
+    <!-- ══ CRIAR SAÍDA ══ -->
+    <div class="page" id="page-criar">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-plus"></i> Nova saída</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-calendar-plus"></i> Detalhes da saída</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Nome do evento</label>
+            <input type="text" id="ev-nome" placeholder="Ex: Pizza + cinema no Gaia" oninput="syncPreview()"/>
+          </div>
+          <div class="form-field">
+            <label>Data</label>
+            <input type="date" id="ev-data" oninput="syncPreview()"/>
+          </div>
+          <div class="form-field">
+            <label>Hora</label>
+            <input type="time" id="ev-hora" oninput="syncPreview()"/>
+          </div>
+          <div class="form-field full">
+            <label>Local</label>
+            <input type="text" id="ev-local" placeholder="Ex: Hard Club, Porto" oninput="syncPreview()"/>
+          </div>
+          <div class="form-field full">
+            <label>Notas (opcional)</label>
+            <textarea id="ev-notas" placeholder="Ex: Encontramo-nos à entrada, cada um paga o seu" oninput="syncPreview()"></textarea>
+          </div>
+          <div class="form-field">
+            <label>Responder até</label>
+            <input type="date" id="ev-prazo" oninput="syncPreview()"/>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-palette"></i> Personalizar convite</div>
+        <div class="form-grid">
+          <div class="form-field full">
+            <label>Emoji do evento</label>
+            <div class="emoji-row" id="emoji-row"></div>
+          </div>
+          <div class="form-field full">
+            <label>Cor do cabeçalho</label>
+            <div class="color-row" id="color-swatches"></div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="showPage('convite')"><i class="ti ti-eye"></i> Ver convite</button>
+        <button class="btn btn-primary" onclick="criarEvento()"><i class="ti ti-check"></i> Criar e gerar link</button>
+      </div>
+    </div>
+
+    <!-- ══ CONVITE ══ -->
+    <div class="page" id="page-convite">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-envelope"></i> Convite</div>
+      </div>
+      <div class="convite-layout">
+        <!-- Preview envelope -->
+        <div>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:1.25rem;">Clica no envelope para ver como os teus amigos vão ver:</p>
+          <div class="envelope-scene">
+            <div class="envelope-wrap" id="envelope" onclick="toggleEnvelope()">
+              <div class="env-flap"><div class="env-flap-inner"></div></div>
+              <div class="env-body">
+                <div class="env-card">
+                  <div class="env-card-emoji" id="env-emoji">🎉</div>
+                  <div class="env-card-name" id="env-card-name">O teu convite</div>
+                </div>
+              </div>
+            </div>
+            <div class="env-hint" id="env-hint"><i class="ti ti-hand-click" style="font-size:14px;"></i> Clica para abrir</div>
+            <div class="invite-content" id="invite-content">
+              <div class="invite-wrap">
+                <div class="invite-banner" id="prev-banner">
+                  <span class="invite-emoji-big" id="prev-emoji">🎉</span>
+                  <div class="invite-title" id="prev-titulo">Nome do evento</div>
+                  <div class="invite-sub">Estás convidado(a)!</div>
+                </div>
+                <div class="invite-body">
+                  <div class="invite-row"><i class="ti ti-calendar"></i><span id="prev-data-hora">Data e hora</span></div>
+                  <div class="invite-row"><i class="ti ti-map-pin"></i><span id="prev-local">Local</span></div>
+                  <div class="invite-row" id="prev-notas-row" style="display:none;"><i class="ti ti-note"></i><span id="prev-notas"></span></div>
+                </div>
+                <div class="invite-deadline" id="prev-deadline" style="display:none;">
+                  <i class="ti ti-clock"></i> Responde até <strong id="prev-prazo-txt"></strong>
+                </div>
+                <div class="invite-form-area">
+                  <div class="invite-form-label">A tua resposta</div>
+                  <div class="form-grid">
+                    <div class="form-field"><label>Nome</label><input type="text" placeholder="Ex: Sofia Mendes" id="rsvp-nome"/></div>
+                    <div class="form-field"><label>Telemóvel</label><input type="tel" placeholder="+351 9XX XXX XXX" id="rsvp-tel"/></div>
+                  </div>
+                  <div class="rsvp-btns">
+                    <button class="rsvp-btn rsvp-yes" onclick="responder('yes')"><i class="ti ti-check"></i> Sim, vou!</button>
+                    <button class="rsvp-btn rsvp-late" onclick="toggleAtrasoInput()"><i class="ti ti-clock-exclamation"></i> Vou, mas chego atrasado(a)</button>
+                    <button class="rsvp-btn rsvp-later" onclick="responder('later')"><i class="ti ti-dots"></i> Confirmo mais tarde</button>
+                    <button class="rsvp-btn rsvp-no" onclick="responder('no')"><i class="ti ti-x"></i> Não posso</button>
+                  </div>
+                  <div class="atraso-input-wrap" id="atraso-wrap">
+                    <div class="form-grid">
+                      <div class="form-field"><label>Hora prevista de chegada</label><input type="time" id="atraso-hora"/></div>
+                      <div class="form-field"><label>Nota (opcional)</label><input type="text" id="atraso-nota" placeholder="Ex: tenho médico antes"/></div>
+                    </div>
+                    <div style="margin-top:10px;">
+                      <button class="btn btn-primary" style="width:100%;" onclick="responder('late')"><i class="ti ti-check"></i> Confirmar com atraso</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:13px; font-weight:500; color:var(--text-muted); margin: 1rem 0 6px;">Link para partilhar</div>
+              <div class="link-box">
+                <i class="ti ti-link" style="color:var(--accent-light);"></i>
+                <span class="link-url" id="link-url">—</span>
+                <button class="link-btn" onclick="copiarLink()" title="Copiar link"><i class="ti ti-copy"></i></button>
+                <button class="link-btn" onclick="partilharLink()" title="Partilhar"><i class="ti ti-share"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Painel lateral do convite -->
+        <div>
+          <div class="card">
+            <div class="card-title"><i class="ti ti-info-circle"></i> Sobre este convite</div>
+            <p style="font-size:13px;color:var(--text-muted);line-height:1.6;">Cria um evento na aba <strong style="color:var(--text);">Nova saída</strong> para gerar automaticamente um convite com link partilhável. Podes também abrir um convite recebido a partir do sininho <i class="ti ti-bell" style="font-size:13px;color:var(--accent-light);"></i>.</p>
+            <div style="margin-top:1rem; display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-ghost" onclick="showPage('criar')"><i class="ti ti-plus"></i> Nova saída</button>
+              <button class="btn btn-ghost" onclick="showPage('sugestoes')"><i class="ti ti-sparkles"></i> Sugestões</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SUGESTÕES ══ -->
+    <div class="page" id="page-sugestoes">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-sparkles"></i> Sugestões</div>
+      </div>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:1rem;">Clica numa ideia para a usar como ponto de partida</p>
+      <div class="sugg-grid" id="sugg-grid"></div>
+    </div>
+
+    <!-- ══ GRUPOS ══ -->
+    <div class="page" id="page-grupos">
+      <div class="page-header">
+        <div class="page-title"><i class="ti ti-users-group"></i> Grupos</div>
+        <button class="btn btn-primary" onclick="abrirNovoGrupo()"><i class="ti ti-plus"></i> Novo grupo</button>
+      </div>
+      <div id="grupos-container"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-btn active" onclick="showPage('dashboard')" id="mnav-dashboard"><i class="ti ti-layout-dashboard"></i>Início</button>
+    <button class="mobile-nav-btn" onclick="showPage('eventos')" id="mnav-eventos"><i class="ti ti-calendar-event"></i>Eventos</button>
+    <button class="mobile-nav-btn" onclick="showPage('criar')" id="mnav-criar"><i class="ti ti-plus"></i>Criar</button>
+    <button class="mobile-nav-btn" onclick="showPage('convites')" id="mnav-convites"><i class="ti ti-inbox"></i>Convites</button>
+    <button class="mobile-nav-btn" onclick="showPage('grupos')" id="mnav-grupos"><i class="ti ti-users-group"></i>Grupos</button>
+  </div>
+</nav>
+
+<!-- MODAL BOLEIAS -->
+<div class="modal-overlay" id="boleia-modal" onclick="fecharBoleia(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-car"></i> <span id="boleia-modal-titulo">Boleias</span></div>
+    <div id="boleia-escolha">
+      <div class="boleia-choice">
+        <button class="boleia-choice-btn" onclick="escolherBoleia('dar')"><i class="ti ti-steering-wheel"></i><span>Dou boleia</span></button>
+        <button class="boleia-choice-btn" onclick="escolherBoleia('pedir')"><i class="ti ti-hand-stop"></i><span>Preciso de boleia</span></button>
+      </div>
+    </div>
+    <div class="boleia-form" id="boleia-form-dar">
+      <div style="margin-bottom:0.75rem;">
+        <label style="font-size:12px;color:var(--text-muted);font-weight:500;letter-spacing:0.02em;text-transform:uppercase;display:block;margin-bottom:6px;">Sentido</label>
+        <div class="segmented" id="seg-dar">
+          <button class="seg-btn active" onclick="setSeg('dar','ida')">Ida</button>
+          <button class="seg-btn" onclick="setSeg('dar','volta')">Volta</button>
+          <button class="seg-btn" onclick="setSeg('dar','ambos')">Ambos</button>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:0.75rem;">
+        <div class="form-field"><label>Hora de saída</label><input type="time" id="boleia-hora-saida"/></div>
+        <div class="form-field"><label>Lugares disponíveis</label><input type="number" id="boleia-lugares" min="1" max="8" value="2"/></div>
+        <div class="form-field full"><label>Zona de partida</label><input type="text" id="boleia-zona-dar" placeholder="Ex: Baixa do Porto, Matosinhos..."/></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="voltarEscolha()"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn btn-primary" onclick="submeterBoleia('dar')"><i class="ti ti-check"></i> Oferecer boleia</button>
+      </div>
+    </div>
+    <div class="boleia-form" id="boleia-form-pedir">
+      <div style="margin-bottom:0.75rem;">
+        <label style="font-size:12px;color:var(--text-muted);font-weight:500;letter-spacing:0.02em;text-transform:uppercase;display:block;margin-bottom:6px;">Sentido</label>
+        <div class="segmented" id="seg-pedir">
+          <button class="seg-btn active" onclick="setSeg('pedir','ida')">Ida</button>
+          <button class="seg-btn" onclick="setSeg('pedir','volta')">Volta</button>
+          <button class="seg-btn" onclick="setSeg('pedir','ambos')">Ambos</button>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:0.75rem;">
+        <div class="form-field"><label>Hora a que ficas pronto(a)</label><input type="time" id="boleia-hora-pronto"/></div>
+        <div class="form-field full"><label>Onde te buscam</label><input type="text" id="boleia-zona-pedir" placeholder="Ex: Rua de Santa Catarina, Porto"/></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="voltarEscolha()"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn btn-primary" onclick="submeterBoleia('pedir')"><i class="ti ti-check"></i> Pedir boleia</button>
+      </div>
+    </div>
+    <div id="boleia-lista-wrap"></div>
+  </div>
+</div>
+
+<!-- MODAL GRUPO -->
+<div class="modal-overlay" id="grupo-modal" onclick="fecharGrupo(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-users-group"></i> <span id="grupo-modal-titulo">Novo grupo</span></div>
+    <div class="form-grid" style="margin-bottom:0.75rem;">
+      <div class="form-field full"><label>Nome do grupo</label><input type="text" id="grupo-nome-input" placeholder="Ex: Gang do Porto"/></div>
+      <div class="form-field full"><label>Emoji</label><input type="text" id="grupo-emoji-input" maxlength="2" placeholder="🎉" style="font-size:20px;"/></div>
+    </div>
+    <div style="margin-bottom:0.75rem;">
+      <label style="font-size:12px;color:var(--text-muted);font-weight:500;letter-spacing:0.02em;text-transform:uppercase;display:block;margin-bottom:8px;">Adicionar membro</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="membro-nome-input" placeholder="Nome" style="flex:1;"/>
+        <input type="tel" id="membro-tel-input" placeholder="+351 9XX..." style="flex:1;"/>
+        <button class="btn btn-ghost" onclick="adicionarMembro()" style="padding:9px 12px;"><i class="ti ti-plus"></i></button>
+      </div>
+    </div>
+    <div class="membro-list" id="membro-list-preview"></div>
+    <div class="btn-row" style="margin-top:1rem;">
+      <button class="btn btn-ghost" onclick="fecharGrupoModal()"><i class="ti ti-x"></i> Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarGrupo()"><i class="ti ti-check"></i> Guardar grupo</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONTACTOS -->
+<div class="modal-overlay" id="contactos-modal" onclick="fecharContactos(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-address-book"></i> <span id="contactos-modal-titulo">Contactos do evento</span></div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;">Participantes confirmados — podes copiar tudo para criar o grupo.</p>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <div id="contactos-lista"></div>
+      <div class="contactos-copy-row">
+        <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="copiarContactos()"><i class="ti ti-copy"></i> Copiar lista</button>
+        <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="partilharContactos()"><i class="ti ti-share"></i> Partilhar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <i class="ti ti-check" id="toast-icon"></i>
+  <span id="toast-msg">Feito!</span>
+</div>
+
+<script>
+// ══ DADOS ══
+const EMOJIS = ['🎉','🎬','🍕','🏖️','🎮','🎤','🍻','🌿','🎭','🎳','🥾','🎪'];
+const CORES  = ['#7c3aed','#f72585','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#6366f1','#14b8a6','#84cc16'];
+
+const SUGESTOES = [
+  { emoji:'🎬', nome:'Cinema + jantar',    desc:'Filme à escolha, depois comida para comentar tudo' },
+  { emoji:'🍕', nome:'Pizza em casa',      desc:'Cada um traz um ingrediente, saem pizzas épicas' },
+  { emoji:'🎳', nome:'Bowling',            desc:'Competição ridícula garantida' },
+  { emoji:'🌿', nome:'Pic-nic',            desc:'Parque, música e salgadinhos para todos' },
+  { emoji:'🎮', nome:'Noite de jogos',     desc:'Catan, UNO, ou videojogos em cooperativo' },
+  { emoji:'🎤', nome:'Karaoke',            desc:'Quanto pior, mais divertido — sem vergonha' },
+  { emoji:'🔑', nome:'Escape room',        desc:'Até 6 pessoas, recomendado para aventura' },
+  { emoji:'🏖️', nome:'Praia ou rio',       desc:'Dia inteiro ao sol com banho incluído' },
+  { emoji:'🎭', nome:'Stand-up comedy',    desc:'Há sempre espetáculos de entrada livre no Porto' },
+  { emoji:'🥾', nome:'Caminhada',          desc:'Serra do Gerês, Sintra ou um trilho perto' },
+  { emoji:'🍻', nome:'Rota de bares',      desc:'Cada ronda num sítio diferente' },
+  { emoji:'🎪', nome:'Festival ou mercado',desc:'Ver o que há no fim de semana e aparecer' },
+];
+
+// Dados de exemplo — usados apenas se o Firebase ainda não estiver configurado
+// (modo demo) ou como primeira carga antes da app ligar à base de dados real.
+const ESTADO_SEED = {
+  boleias: {
+    12: [
+      { tipo:'dar',   sentido:'ambos', hora:'09:30', zona:'Baixa do Porto',      lugares:3,    nome:'Catarina V.' },
+      { tipo:'pedir', sentido:'volta', hora:'18:00', zona:'Matosinhos centro',   lugares:null, nome:'Rui M.' },
+    ]
+  },
+  grupos: [
+    { id:1, nome:'Gang do Porto', emoji:'🎉', membros:[
+      { nome:'Mariana R.', tel:'+351 912 345 678' },
+      { nome:'João S.',    tel:'+351 963 111 222' },
+      { nome:'Tânia A.',  tel:'+351 935 777 888' },
+    ]},
+    { id:2, nome:'Praia crew', emoji:'🏖️', membros:[
+      { nome:'Beatriz F.', tel:'+351 921 555 111' },
+      { nome:'Rodrigo N.', tel:'+351 912 888 999' },
+    ]},
+  ],
+  meus: [
+    { id:1, nome:'Cinema + jantar — Marquês', slug:'cinema-jantar-marques', data:'2026-07-05', hora:'20:00', local:'NOS Marquês, Porto', notas:'Encontramo-nos à entrada às 20h!', prazo:'2026-07-03', emoji:'🎬', cor:'#7c3aed',
+      respostas:[
+        { nome:'Mariana R.', tel:'+351 912 345 678', status:'late', horaAtraso:'20:30', notaAtraso:'tenho médico antes' },
+        { nome:'João S.',    tel:'+351 963 111 222', status:'yes' },
+        { nome:'Tânia A.',  tel:'+351 935 777 888', status:'later' },
+        { nome:'Carlos L.', tel:'+351 914 000 111', status:'no' },
+      ]},
+    { id:2, nome:'Pic-nic no Parque da Cidade', slug:'picnic-parque-da-cidade', data:'2026-07-13', hora:'12:00', local:'Parque da Cidade, Porto', notas:'', prazo:'2026-07-11', emoji:'🌿', cor:'#10b981',
+      respostas:[
+        { nome:'Beatriz F.', tel:'+351 921 555 111', status:'yes' },
+        { nome:'Rodrigo N.', tel:'+351 912 888 999', status:'later' },
+        { nome:'Vera T.',    tel:'+351 963 444 555', status:'none' },
+      ]},
+  ],
+  convitesRecebidos: [
+    { id:10, nome:'Escape room — Porto',       data:'2026-07-08', hora:'19:00', local:'Exit the Room, Porto',  emoji:'🔑', cor:'#6366f1', prazo:'2026-07-06', meuStatus:'none' },
+    { id:11, nome:'Karaoke no Maus Hábitos',  data:'2026-07-19', hora:'22:00', local:'Maus Hábitos, Porto',   emoji:'🎤', cor:'#f72585', prazo:'2026-07-16', meuStatus:'later' },
+    { id:12, nome:'Praia de Matosinhos',       data:'2026-08-02', hora:'10:00', local:'Praia de Matosinhos',   emoji:'🏖️', cor:'#0ea5e9', prazo:'2026-07-29', meuStatus:'yes' },
+  ],
+};
+
+const estado = {
+  boleias: {}, grupos: [], meus: [], convitesRecebidos: [],
+  grupoEditando:null, membrosTemp:[], boleiaEventoAtual:null,
+  boleiaSentidoDar:'ida', boleiaSentidoPedir:'ida', convitePreviewAtual:null,
+  emojiAtual:'🎉', corAtual:'#7c3aed',
+  envelopeAberto:false, respPanelAberto:null,
+  modoDemo: true, // true até o Firebase confirmar ligação
+  eventoPublicoAtual: null, // preenchido quando a app abre via link ?evento=slug
+};
+
+// ══ PERSISTÊNCIA (FIREBASE) ══
+const COL_EVENTOS = 'eventos';
+const COL_GRUPOS  = 'grupos';
+
+function setFbStatus(tipo, texto) {
+  const el = document.getElementById('fb-status');
+  if (!el) return;
+  el.className = 'fb-status ' + tipo;
+  el.style.display = 'flex';
+  el.innerHTML = `<i class="ti ${tipo === 'ok' ? 'ti-cloud-check' : tipo === 'error' ? 'ti-cloud-off' : 'ti-loader-2'}"></i> ${texto}`;
+}
+
+let unsubEventos = null, unsubGrupos = null;
+
+async function iniciarFirebase() {
+  if (!window.fb || !window.fb.db) {
+    // Firebase não configurado — fica em modo demo com dados de exemplo
+    setFbStatus('error', 'Modo demo (sem ligação)');
+    Object.assign(estado, JSON.parse(JSON.stringify(ESTADO_SEED)));
+    estado.modoDemo = true;
+    renderTudo();
+    await verificarLinkPublico();
+    return;
+  }
+  setFbStatus('loading', 'A ligar...');
+  const { db, collection, onSnapshot, query } = window.fb;
+
+  // Eventos criados pelo utilizador (meus) — ouve em tempo real
+  unsubEventos = onSnapshot(query(collection(db, COL_EVENTOS)), (snap) => {
+    estado.meus = [];
+    snap.forEach(d => estado.meus.push({ id: d.id, ...d.data() }));
+    estado.meus.sort((a,b) => (a.data || '').localeCompare(b.data || ''));
+    renderTudo();
+  }, (err) => {
+    console.error('Erro ao ler eventos:', err);
+    setFbStatus('error', 'Erro de permissões — ver Firestore Rules');
+  });
+
+  // Grupos
+  unsubGrupos = onSnapshot(query(collection(db, COL_GRUPOS)), (snap) => {
+    estado.grupos = [];
+    snap.forEach(d => estado.grupos.push({ id: d.id, ...d.data() }));
+    renderTudo();
+  });
+
+  estado.modoDemo = false;
+  setFbStatus('ok', 'Ligado');
+  setTimeout(() => { document.getElementById('fb-status').style.display = 'none'; }, 3000);
+  await verificarLinkPublico();
+}
+
+function renderTudo() {
+  renderBell();
+  PAGE_IDS.forEach(p => {
+    if (document.getElementById('page-' + p)?.classList.contains('active')) showPage(p);
+  });
+}
+
+// ══ LINK PÚBLICO (?evento=slug) ══
+// Quando alguém abre o link de um convite, vai buscar esse evento específico
+// ao Firestore e mostra-o diretamente na página de convite — sem precisar
+// de o evento estar na lista local "meus".
+async function verificarLinkPublico() {
+  const params = new URLSearchParams(location.search);
+  const slug = params.get('evento');
+  if (!slug) return false;
+
+  if (estado.modoDemo || !window.fb?.db) {
+    // Em modo demo, simula com os eventos locais
+    const local = estado.meus.find(e => e.slug === slug);
+    if (local) { abrirEventoPublico(local); return true; }
+    return false;
+  }
+
+  setFbStatus('loading', 'A carregar convite...');
+  try {
+    const { db, collection, getDocs, query, where } = window.fb;
+    const q = query(collection(db, COL_EVENTOS), where('slug', '==', slug));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      toast('Este convite não foi encontrado', 'ti-alert-triangle');
+      return false;
+    }
+    const d = snap.docs[0];
+    abrirEventoPublico({ id: d.id, ...d.data() });
+    document.getElementById('fb-status').style.display = 'none';
+    return true;
+  } catch (err) {
+    console.error('Erro ao carregar convite público:', err);
+    toast('Erro ao carregar o convite', 'ti-alert-triangle');
+    return false;
+  }
+}
+function abrirEventoPublico(ev) {
+  estado.eventoPublicoAtual = ev;
+  estado.convitePreviewAtual = null;
+  preencherConvite(ev.nome, ev.data, ev.hora, ev.local, ev.notas, ev.prazo, ev.emoji, ev.cor || '#7c3aed');
+  document.getElementById('link-url').textContent = `${location.origin}${location.pathname}?evento=${ev.slug}`;
+  document.getElementById('rsvp-nome').value = '';
+  document.getElementById('rsvp-tel').value = '';
+  // Esconde a navegação — quem recebe o link só vê o convite, não o dashboard inteiro
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.mobile-nav').style.display = 'none';
+  PAGE_IDS.forEach(p => p !== 'convite' && document.getElementById('nav-' + p)?.remove());
+  showPage('convite');
+  document.getElementById('envelope').classList.remove('open');
+  estado.envelopeAberto = false;
+  document.getElementById('invite-content').classList.remove('visible');
+  document.getElementById('env-hint').style.display = 'flex';
+}
+
+window.addEventListener('fb-ready', iniciarFirebase);
+window.addEventListener('fb-error', () => {
+  setFbStatus('error', 'Modo demo (login falhou)');
+  Object.assign(estado, JSON.parse(JSON.stringify(ESTADO_SEED)));
+  renderTudo();
+});
+// Se o Firebase não responder em 4s (config por preencher), cai em modo demo
+setTimeout(() => { if (estado.meus.length === 0 && estado.modoDemo) iniciarFirebase(); }, 4000);
+
+// ══ NAVEGAÇÃO ══
+const PAGE_IDS = ['dashboard','eventos','convites','criar','convite','sugestoes','grupos'];
+
+function showPage(name) {
+  PAGE_IDS.forEach(p => {
+    document.getElementById('page-' + p)?.classList.remove('active');
+    document.getElementById('nav-' + p)?.classList.remove('active');
+    document.getElementById('mnav-' + p)?.classList.remove('active');
+  });
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  document.getElementById('mnav-' + name)?.classList.add('active');
+
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'eventos')   renderEventos();
+  if (name === 'convites')  renderConvitesRecebidos();
+  if (name === 'grupos')    renderGrupos();
+  if (name === 'sugestoes') renderSugestoes();
+}
+
+// ══ BELL ══
+function toggleBell() {
+  document.getElementById('bell-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('bell-wrap').contains(e.target))
+    document.getElementById('bell-dropdown').classList.remove('open');
+});
+function renderBell() {
+  const pendentes = estado.convitesRecebidos.filter(c => c.meuStatus === 'none' || c.meuStatus === 'later');
+  const naoVistos = pendentes.filter(c => c.meuStatus === 'none');
+  const badge = document.getElementById('bell-badge');
+  badge.textContent = naoVistos.length;
+  badge.style.display = naoVistos.length ? 'flex' : 'none';
+
+  const navBadge = document.getElementById('nav-badge-convites');
+  if (naoVistos.length) { navBadge.textContent = naoVistos.length; navBadge.style.display = 'inline-block'; }
+  else navBadge.style.display = 'none';
+
+  const lista = document.getElementById('bell-lista');
+  if (!pendentes.length) { lista.innerHTML = '<div class="bell-empty">Nenhum convite pendente</div>'; return; }
+  lista.innerHTML = pendentes.map(c => {
+    const isLater = c.meuStatus === 'later';
+    return `<div class="bell-item" onclick="abrirConviteRecebido(${c.id})">
+      <div class="bell-emoji">${c.emoji}</div>
+      <div class="bell-info">
+        <div class="bell-name">${c.nome}</div>
+        <div class="bell-meta">${fmtData(c.data, c.hora)} · ${c.local.split(',')[0]}</div>
+        <span class="bell-status bs-pending">${isLater ? 'A confirmar' : 'Sem resposta'}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ HELPERS ══
+function fmtData(d, h) {
+  if (!d) return '—';
+  const dt = new Date(d + 'T00:00:00');
+  const dias  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const meses = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  let s = `${dias[dt.getDay()]}, ${dt.getDate()} ${meses[dt.getMonth()]}`;
+  if (h) s += ` · ${h.replace(':','h')}`;
+  return s;
+}
+function badgeEvento(ev) {
+  const hoje = new Date().toISOString().slice(0,10);
+  const semResposta = ev.respostas.filter(r => r.status === 'none' || r.status === 'later');
+  if (ev.prazo && ev.prazo < hoje) return '<span class="badge badge-done">Encerrado</span>';
+  if (ev.prazo) {
+    const dias = Math.ceil((new Date(ev.prazo) - new Date(hoje)) / 86400000);
+    if (dias <= 2 && semResposta.length) return `<span class="badge badge-urgent">Fecha em ${dias}d</span>`;
+  }
+  if (semResposta.length) return '<span class="badge badge-open">Em aberto</span>';
+  return '<span class="badge badge-done">Completo</span>';
+}
+function ini(nome) { return nome.split(' ').map(p=>p[0]).join('').slice(0,2); }
+function slugify(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,30)
+    + '-' + Math.random().toString(36).slice(2,6);
+}
+
+// ══ DASHBOARD ══
+function renderDashboard() {
+  // Se ainda não há dados (Firebase a carregar), mostra skeleton
+  if (estado.modoDemo === true && estado.meus.length === 0 && estado.grupos.length === 0) {
+    document.getElementById('stats-row').innerHTML = [1,2,3,4,5].map(() =>
+      `<div class="stat-card"><div class="stat-label" style="background:var(--surface2);border-radius:4px;height:10px;width:60%;margin-bottom:10px;">&nbsp;</div><div style="background:var(--surface2);border-radius:6px;height:28px;width:40%;">&nbsp;</div></div>`
+    ).join('');
+    document.getElementById('next-event-wrap').innerHTML = '';
+    document.getElementById('dash-eventos-lista').innerHTML = '';
+    document.getElementById('dash-convites-wrap').innerHTML = '';
+    return;
+  }
+  // Stats
+  const totalMeus = estado.meus.length;
+  const totalConfirmados = estado.meus.reduce((a, ev) => a + ev.respostas.filter(r => r.status === 'yes' || r.status === 'late').length, 0);
+  const totalPendentes = estado.meus.reduce((a, ev) => a + ev.respostas.filter(r => r.status === 'none' || r.status === 'later').length, 0);
+  const semResposta = estado.convitesRecebidos.filter(c => c.meuStatus === 'none').length;
+
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">Eventos criados</div>
+      <div class="stat-val">${totalMeus}</div>
+      <div class="stat-sub">por mim</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Confirmados</div>
+      <div class="stat-val">${totalConfirmados}</div>
+      <div class="stat-sub">em todos os eventos</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Pendentes</div>
+      <div class="stat-val">${totalPendentes}</div>
+      <div class="stat-sub">sem resposta</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Convites</div>
+      <div class="stat-val">${estado.convitesRecebidos.length}</div>
+      <div class="stat-sub">${semResposta} por responder</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Grupos</div>
+      <div class="stat-val">${estado.grupos.length}</div>
+      <div class="stat-sub">${estado.grupos.reduce((a,g) => a + g.membros.length, 0)} membros total</div>
+    </div>
+  `;
+
+  // Próximo evento
+  const hoje = new Date().toISOString().slice(0,10);
+  const proximoMeu = [...estado.meus].sort((a,b) => a.data.localeCompare(b.data)).find(ev => ev.data >= hoje);
+  const proximoConvite = [...estado.convitesRecebidos].filter(c => c.meuStatus === 'yes').sort((a,b) => a.data.localeCompare(b.data)).find(c => c.data >= hoje);
+
+  let proximo = null;
+  if (proximoMeu && proximoConvite) proximo = proximoMeu.data <= proximoConvite.data ? proximoMeu : proximoConvite;
+  else proximo = proximoMeu || proximoConvite;
+
+  const wrap = document.getElementById('next-event-wrap');
+  if (proximo) {
+    const isConvite = !proximo.respostas;
+    const yes = isConvite ? '—' : proximo.respostas.filter(r => r.status === 'yes' || r.status === 'late').length;
+    const diasAte = Math.ceil((new Date(proximo.data) - new Date(hoje)) / 86400000);
+    wrap.innerHTML = `
+    <div class="next-event">
+      <div class="next-emoji">${proximo.emoji}</div>
+      <div class="next-info">
+        <div class="next-label">Próxima saída · daqui a ${diasAte} dia${diasAte !== 1 ? 's' : ''}</div>
+        <div class="next-name">${proximo.nome}</div>
+        <div class="next-meta">
+          <span><i class="ti ti-calendar"></i> ${fmtData(proximo.data, proximo.hora)}</span>
+          <span><i class="ti ti-map-pin"></i> ${proximo.local.split(',')[0]}</span>
+          ${!isConvite ? `<span><i class="ti ti-users"></i> ${yes} confirmados</span>` : '<span><i class="ti ti-check" style="color:var(--green);"></i> Confirmado</span>'}
+        </div>
+      </div>
+      <div class="next-actions">
+        ${!isConvite ? `<button class="btn btn-primary" onclick="showPage('eventos')"><i class="ti ti-users"></i> Ver respostas</button>` : ''}
+        <button class="btn btn-ghost" onclick="${isConvite ? `exportarCalendarioConvite(${proximo.id})` : `exportarCalendario(${proximo.id})`}"><i class="ti ti-calendar-plus"></i> Exportar</button>
+      </div>
+    </div>`;
+  } else {
+    wrap.innerHTML = '';
+  }
+
+  // Lista resumida dos meus eventos
+  const listEl = document.getElementById('dash-eventos-lista');
+  if (estado.meus.length) {
+    listEl.innerHTML = estado.meus.map(ev => renderEvCard(ev, true)).join('');
+  } else {
+    listEl.innerHTML = `<div class="empty"><i class="ti ti-calendar-off"></i><p>Ainda não criaste nenhuma saída.<br/><button class="btn btn-primary" style="margin-top:0.75rem;" onclick="showPage('criar')"><i class="ti ti-plus"></i> Criar agora</button></p></div>`;
+  }
+
+  // Convites pendentes no dashboard
+  const pendentes = estado.convitesRecebidos.filter(c => c.meuStatus === 'none' || c.meuStatus === 'later');
+  const convWrap = document.getElementById('dash-convites-wrap');
+  if (pendentes.length) {
+    convWrap.innerHTML = `
+    <div class="sec-label" style="margin-top:1.5rem;"><span><i class="ti ti-inbox"></i> Convites por responder</span>
+      <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;" onclick="showPage('convites')">Ver todos</button>
+    </div>
+    ${pendentes.map(c => renderConviteCard(c)).join('')}`;
+  } else {
+    convWrap.innerHTML = '';
+  }
+}
+
+// ══ EVENTOS ══
+function renderEvCard(ev, compact = false) {
+  const visíveis = ev.respostas.filter(r => r.status !== 'no');
+  const yes   = ev.respostas.filter(r => r.status === 'yes' || r.status === 'late').length;
+  const later = ev.respostas.filter(r => r.status === 'later').length;
+  const none  = ev.respostas.filter(r => r.status === 'none').length;
+  const avs = visíveis.slice(0,5).map(r => {
+    const cl = r.status === 'yes' || r.status === 'late' ? 'av-yes' : r.status === 'later' ? 'av-later' : 'av-pending';
+    return `<div class="av ${cl}" title="${r.nome}">${ini(r.nome)}</div>`;
+  }).join('');
+  const counts = [
+    yes   ? `${yes} vão` : '',
+    later ? `${later} a confirmar` : '',
+    none  ? `${none} sem resposta` : '',
+  ].filter(Boolean).join(' · ') || 'Nenhuma resposta ainda';
+
+  return `
+  <div class="ev-card" id="evc-${ev.id}">
+    <div class="ev-header">
+      <div class="ev-name">${ev.emoji} ${ev.nome}</div>
+      ${badgeEvento(ev)}
+    </div>
+    <div class="ev-meta">
+      <span><i class="ti ti-calendar"></i> ${fmtData(ev.data, ev.hora)}</span>
+      <span><i class="ti ti-map-pin"></i> ${ev.local.split(',')[0]}</span>
+      ${ev.prazo ? `<span><i class="ti ti-clock"></i> Resp. até ${fmtData(ev.prazo)}</span>` : ''}
+    </div>
+    <div class="ev-rsvp">
+      <div style="display:flex;align-items:center;">
+        <div class="avatars">${avs}</div>
+        <span class="rsvp-text">${counts}</span>
+      </div>
+      <div class="ev-actions">
+        <button class="btn-xs" onclick="toggleRespostas(${ev.id})"><i class="ti ti-users"></i> Respostas</button>
+        <button class="btn-xs" onclick="abrirContactos(${ev.id})"><i class="ti ti-address-book"></i> Contactos</button>
+        <button class="btn-xs" onclick="exportarCalendario(${ev.id})"><i class="ti ti-calendar-plus"></i> .ics</button>
+        <button class="btn-xs" onclick="copiarLinkEvento(${ev.id})"><i class="ti ti-link"></i> Link</button>
+      </div>
+    </div>
+    <div id="resp-panel-${ev.id}" style="display:none; margin-top:10px;">${renderRespostas(ev)}</div>
+  </div>`;
+}
+
+function renderRespostas(ev) {
+  const visíveis = ev.respostas.filter(r => r.status !== 'no');
+  const statusIcon  = { yes:'ti-check', late:'ti-clock-exclamation', later:'ti-clock', none:'ti-question-mark' };
+  const statusLabel = { yes:'Vou!', late:'Chega atrasado(a)', later:'Confirma mais tarde', none:'Sem resposta' };
+  const statusCls   = { yes:'s-yes', late:'s-late', later:'s-later', none:'s-none' };
+  const avCls       = { yes:'av-yes', late:'av-later', later:'av-later', none:'av-pending' };
+  return `<div class="resp-panel">
+    <div class="resp-panel-header"><i class="ti ti-users" style="font-size:15px;"></i> ${visíveis.length} convidado${visíveis.length !== 1 ? 's' : ''}</div>
+    ${visíveis.map(r => {
+      const at = r.status === 'late' && r.horaAtraso ? `<div style="font-size:11px;color:var(--amber);margin-top:2px;"><i class="ti ti-clock" style="font-size:11px;"></i> Chega ~${r.horaAtraso}${r.notaAtraso ? ' · ' + r.notaAtraso : ''}</div>` : '';
+      return `<div class="resp-item">
+        <div class="resp-info">
+          <div class="resp-av ${avCls[r.status]}">${ini(r.nome)}</div>
+          <div><div class="resp-name">${r.nome}</div><div class="resp-phone">${r.tel}</div>${at}</div>
+        </div>
+        <span class="status-badge ${statusCls[r.status]}"><i class="ti ${statusIcon[r.status]}"></i> ${statusLabel[r.status]}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function toggleRespostas(id) {
+  const panel = document.getElementById(`resp-panel-${id}`);
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderEventos() {
+  const c = document.getElementById('eventos-container');
+  const vouIr = estado.convitesRecebidos.filter(cv => cv.meuStatus === 'yes');
+  let html = `<div class="sec-label"><span><i class="ti ti-star"></i> Marcados por mim</span></div>`;
+  html += estado.meus.length ? estado.meus.map(ev => renderEvCard(ev)).join('') :
+    `<div class="empty"><i class="ti ti-calendar-off"></i><p>Ainda não criaste nenhuma saída.<br/>Usa a aba "Nova saída"!</p></div>`;
+  if (vouIr.length) {
+    html += `<div class="sec-label" style="margin-top:1.5rem;"><span><i class="ti ti-check" style="color:var(--green);"></i> Vou participar</span></div>`;
+    html += vouIr.map(cv => {
+      const nBoleias = (estado.boleias[cv.id] || []).length;
+      return `<div class="ev-card green-left">
+        <div class="ev-header"><div class="ev-name">${cv.emoji} ${cv.nome}</div><span class="badge badge-done">Confirmado</span></div>
+        <div class="ev-meta">
+          <span><i class="ti ti-calendar"></i> ${fmtData(cv.data, cv.hora)}</span>
+          <span><i class="ti ti-map-pin"></i> ${cv.local.split(',')[0]}</span>
+          ${cv.prazo ? `<span><i class="ti ti-clock"></i> Resp. até ${fmtData(cv.prazo)}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px;">
+          <button class="btn-xs" onclick="exportarCalendarioConvite(${cv.id})"><i class="ti ti-calendar-plus"></i> Exportar .ics</button>
+        </div>
+        <button class="btn-boleia" onclick="abrirBoleia(${cv.id},'${cv.nome}')">
+          <i class="ti ti-car"></i> Boleias${nBoleias ? ` <span style="background:var(--accent-bg);color:var(--accent-light);font-size:11px;padding:1px 7px;border-radius:20px;margin-left:4px;">${nBoleias}</span>` : ''}
+        </button>
+      </div>`;
+    }).join('');
+  }
+  c.innerHTML = html;
+}
+
+// ══ CONVITES RECEBIDOS PAGE ══
+function renderConviteCard(c) {
+  const clsMap = { none: 'sem-resposta', later: 'mais-tarde', yes: 'confirmado' };
+  const labelMap = { none: 'Sem resposta', later: 'A confirmar', yes: 'Confirmado' };
+  const badgeMap = { none: 'badge-urgent', later: 'badge-pending', yes: 'badge-done' };
+  return `<div class="convite-recebido-card ${clsMap[c.meuStatus] || ''}" onclick="abrirConviteRecebido(${c.id})">
+    <div class="cr-emoji">${c.emoji}</div>
+    <div class="cr-info">
+      <div class="cr-nome">${c.nome}</div>
+      <div class="cr-meta">
+        <span><i class="ti ti-calendar"></i> ${fmtData(c.data, c.hora)}</span>
+        <span><i class="ti ti-map-pin"></i> ${c.local.split(',')[0]}</span>
+        ${c.prazo ? `<span><i class="ti ti-clock"></i> até ${fmtData(c.prazo)}</span>` : ''}
+      </div>
+    </div>
+    <div class="cr-badge"><span class="badge ${badgeMap[c.meuStatus]}">${labelMap[c.meuStatus]}</span></div>
+  </div>`;
+}
+function renderConvitesRecebidos() {
+  const c = document.getElementById('convites-container');
+  if (!estado.convitesRecebidos.length) {
+    c.innerHTML = `<div class="empty"><i class="ti ti-inbox"></i><p>Nenhum convite recebido ainda.</p></div>`;
+    return;
+  }
+  const pendentes   = estado.convitesRecebidos.filter(x => x.meuStatus === 'none');
+  const emaberto    = estado.convitesRecebidos.filter(x => x.meuStatus === 'later');
+  const confirmados = estado.convitesRecebidos.filter(x => x.meuStatus === 'yes');
+  let html = '';
+  if (pendentes.length) {
+    html += `<div class="sec-label"><span><i class="ti ti-alert-circle" style="color:var(--red);"></i> Por responder</span></div>`;
+    html += pendentes.map(renderConviteCard).join('');
+  }
+  if (emaberto.length) {
+    html += `<div class="sec-label"><span><i class="ti ti-clock" style="color:var(--amber);"></i> A confirmar mais tarde</span></div>`;
+    html += emaberto.map(renderConviteCard).join('');
+  }
+  if (confirmados.length) {
+    html += `<div class="sec-label"><span><i class="ti ti-check" style="color:var(--green);"></i> Confirmados</span></div>`;
+    html += confirmados.map(renderConviteCard).join('');
+  }
+  c.innerHTML = html;
+}
+
+function abrirConviteRecebido(id) {
+  document.getElementById('bell-dropdown').classList.remove('open');
+  const c = estado.convitesRecebidos.find(x => x.id === id);
+  if (!c) return;
+  estado.convitePreviewAtual = c.id;
+  preencherConvite(c.nome, c.data, c.hora, c.local, '', c.prazo, c.emoji, c.cor);
+  document.getElementById('link-url').textContent = `saidas.app/s/evento-${c.id}`;
+  document.getElementById('rsvp-nome').value = '';
+  document.getElementById('rsvp-tel').value = '';
+  document.getElementById('atraso-hora').value = '';
+  document.getElementById('atraso-nota').value = '';
+  document.getElementById('atraso-wrap').classList.remove('visible');
+  showPage('convite');
+  const env = document.getElementById('envelope');
+  env.classList.remove('open');
+  estado.envelopeAberto = false;
+  document.getElementById('invite-content').classList.remove('visible');
+  document.getElementById('env-hint').style.display = 'flex';
+}
+
+// ══ CRIAR EVENTO ══
+function limparFormCriar() {
+  document.getElementById('ev-nome').value = '';
+  document.getElementById('ev-data').value = '';
+  document.getElementById('ev-hora').value = '';
+  document.getElementById('ev-local').value = '';
+  document.getElementById('ev-notas').value = '';
+  document.getElementById('ev-prazo').value = '';
+  estado.emojiAtual = '🎉'; estado.corAtual = '#7c3aed';
+  document.querySelectorAll('.emoji-opt').forEach(x => x.classList.toggle('active', x.textContent === '🎉'));
+  document.querySelectorAll('.color-swatch').forEach(x => x.classList.toggle('active', x.style.background === 'rgb(124, 58, 237)'));
+  syncPreview();
+}
+async function criarEvento() {
+  const nome = document.getElementById('ev-nome').value.trim();
+  if (!nome) { toast('Dá um nome ao evento primeiro!', 'ti-alert-triangle'); return; }
+  const novo = {
+    nome,
+    data:  document.getElementById('ev-data').value,
+    hora:  document.getElementById('ev-hora').value,
+    local: document.getElementById('ev-local').value.trim() || 'Local a definir',
+    notas: document.getElementById('ev-notas').value.trim(),
+    prazo: document.getElementById('ev-prazo').value,
+    emoji: estado.emojiAtual, cor: estado.corAtual,
+    respostas: [],
+  };
+  novo.slug = slugify(novo.nome);
+
+  let novoId;
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, setDoc, collection, serverTimestamp } = window.fb;
+      const ref = doc(collection(db, COL_EVENTOS));
+      novoId = ref.id;
+      await setDoc(ref, { ...novo, criadoPor: window.fb.uid || null, criadoEm: serverTimestamp() });
+    } catch (err) {
+      console.error('Erro ao criar evento:', err);
+      toast('Erro ao guardar na base de dados', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    novoId = Date.now();
+    novo.id = novoId;
+    estado.meus.unshift(novo);
+  }
+
+  estado.convitePreviewAtual = null;
+  preencherConvite(novo.nome, novo.data, novo.hora, novo.local, novo.notas, novo.prazo, novo.emoji, novo.cor);
+  document.getElementById('link-url').textContent = `${location.origin}${location.pathname}?evento=${novo.slug}`;
+  document.getElementById('envelope').classList.remove('open');
+  estado.envelopeAberto = false;
+  document.getElementById('invite-content').classList.remove('visible');
+  document.getElementById('env-hint').style.display = 'flex';
+  document.getElementById('rsvp-nome').value = '';
+  document.getElementById('rsvp-tel').value = '';
+  showPage('convite');
+  toast('Evento criado! Partilha o convite ✦');
+  limparFormCriar();
+}
+
+// ══ ENVELOPE ══
+function toggleEnvelope() {
+  estado.envelopeAberto = !estado.envelopeAberto;
+  document.getElementById('envelope').classList.toggle('open', estado.envelopeAberto);
+  const content = document.getElementById('invite-content');
+  const hint    = document.getElementById('env-hint');
+  if (estado.envelopeAberto) {
+    setTimeout(() => content.classList.add('visible'), 350);
+    hint.style.display = 'none';
+  } else {
+    content.classList.remove('visible');
+    hint.style.display = 'flex';
+  }
+}
+
+// ══ PREVIEW SYNC ══
+function preencherConvite(nome, data, hora, local, notas, prazo, emoji, cor) {
+  document.getElementById('prev-titulo').textContent    = nome || 'Nome do evento';
+  document.getElementById('prev-local').textContent     = local || 'Local';
+  document.getElementById('prev-data-hora').textContent = data ? fmtData(data, hora) : 'Data e hora';
+  document.getElementById('prev-emoji').textContent     = emoji;
+  document.getElementById('env-emoji').textContent      = emoji;
+  document.getElementById('env-card-name').textContent  = nome || 'O teu convite';
+  document.getElementById('prev-banner').style.background = cor;
+  document.documentElement.style.setProperty('--invite-bg', cor);
+  const notasRow = document.getElementById('prev-notas-row');
+  if (notas) { notasRow.style.display='flex'; document.getElementById('prev-notas').textContent = notas; }
+  else notasRow.style.display='none';
+  const dl = document.getElementById('prev-deadline');
+  if (prazo) { dl.style.display='flex'; document.getElementById('prev-prazo-txt').textContent = fmtData(prazo); }
+  else dl.style.display='none';
+}
+function syncPreview() {
+  preencherConvite(
+    document.getElementById('ev-nome').value,
+    document.getElementById('ev-data').value,
+    document.getElementById('ev-hora').value,
+    document.getElementById('ev-local').value,
+    document.getElementById('ev-notas').value,
+    document.getElementById('ev-prazo').value,
+    estado.emojiAtual, estado.corAtual
+  );
+}
+
+// ══ RSVP ══
+function toggleAtrasoInput() {
+  document.getElementById('atraso-wrap').classList.toggle('visible');
+}
+async function responder(tipo) {
+  const nome = document.getElementById('rsvp-nome').value.trim();
+  const tel  = document.getElementById('rsvp-tel').value.trim();
+  if (!nome || !tel) { toast('Preenche o nome e o telemóvel!', 'ti-alert-triangle'); return; }
+  if (tipo === 'late') {
+    const hora = document.getElementById('atraso-hora').value;
+    if (!hora) { toast('Indica a hora prevista de chegada!', 'ti-alert-triangle'); return; }
+  }
+  document.getElementById('atraso-wrap').classList.remove('visible');
+
+  const statusMap = { yes:'yes', late:'late', later:'later', no:'no' };
+  const status = statusMap[tipo] || tipo;
+  const resposta = { nome, tel, status };
+  if (tipo === 'late') {
+    resposta.horaAtraso  = document.getElementById('atraso-hora').value;
+    resposta.notaAtraso  = document.getElementById('atraso-nota').value.trim();
+  }
+
+  // Página pública aberta via link (?evento=slug) — grava direto no Firestore
+  if (estado.eventoPublicoAtual) {
+    if (!estado.modoDemo && window.fb?.db) {
+      try {
+        const { db, doc, getDoc, updateDoc } = window.fb;
+        const ref = doc(db, COL_EVENTOS, estado.eventoPublicoAtual.id);
+        const snap = await getDoc(ref);
+        const atuais = (snap.data()?.respostas || []).filter(r => r.tel !== tel);
+        atuais.push(resposta);
+        await updateDoc(ref, { respostas: atuais });
+      } catch (err) {
+        console.error('Erro ao responder:', err);
+        toast('Erro ao enviar resposta', 'ti-alert-triangle');
+        return;
+      }
+    } else {
+      toast('Modo demo — resposta não foi gravada na base de dados', 'ti-info-circle');
+    }
+  } else {
+    // Preview interno (convite recebido simulado)
+    const c = estado.convitesRecebidos.find(x => x.id === estado.convitePreviewAtual);
+    if (c) { c.meuStatus = (status === 'late') ? 'yes' : status; renderBell(); }
+  }
+
+  const msgs = { yes:'Resposta enviada — até lá! 🎉', late:'Confirmado! O organizador fica a saber que chegas mais tarde.', later:'Registado! Responde quando souberes.', no:'Resposta registada. Noutra vez!' };
+  toast(msgs[tipo]);
+}
+
+// ══ LINK ══
+function _copiarTexto(texto) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(texto)
+      .then(() => true)
+      .catch(() => _copiarTextoFallback(texto));
+  }
+  return Promise.resolve(_copiarTextoFallback(texto));
+}
+function _copiarTextoFallback(texto) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (err) {
+    return false;
+  }
+}
+function copiarLink() {
+  const texto = document.getElementById('link-url').textContent;
+  _copiarTexto(texto).then(ok => {
+    toast(ok ? 'Link copiado!' : 'Não foi possível copiar — copia manualmente', ok ? 'ti-check' : 'ti-alert-triangle');
+  });
+}
+function partilharLink() {
+  const url = document.getElementById('link-url').textContent;
+  if (navigator.share) navigator.share({ title: 'Saída marcada!', url }).catch(()=>{});
+  else copiarLink();
+}
+function copiarLinkEvento(id) {
+  const ev = estado.meus.find(e => e.id === id);
+  const slug = ev?.slug || slugify(ev?.nome || 'evento');
+  const url = `${location.origin}${location.pathname}?evento=${slug}`;
+  _copiarTexto(url).then(ok => {
+    toast(ok ? 'Link copiado!' : 'Não foi possível copiar — copia manualmente', ok ? 'ti-check' : 'ti-alert-triangle');
+  });
+}
+
+// ══ PERSONALIZAÇÃO ══
+function initPersonalizacao() {
+  const er = document.getElementById('emoji-row');
+  EMOJIS.forEach(e => {
+    const el = document.createElement('span');
+    el.className = 'emoji-opt' + (e === estado.emojiAtual ? ' active' : '');
+    el.textContent = e;
+    el.onclick = () => {
+      estado.emojiAtual = e;
+      document.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      syncPreview();
+    };
+    er.appendChild(el);
+  });
+  const cr = document.getElementById('color-swatches');
+  CORES.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'color-swatch' + (c === estado.corAtual ? ' active' : '');
+    el.style.background = c;
+    el.onclick = () => {
+      estado.corAtual = c;
+      document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      syncPreview();
+    };
+    cr.appendChild(el);
+  });
+}
+
+// ══ SUGESTÕES ══
+function renderSugestoes() {
+  document.getElementById('sugg-grid').innerHTML = SUGESTOES.map(s => `
+    <div class="sugg-card" onclick="usarSugestao('${s.nome}','${s.emoji}')">
+      <div class="sugg-icon-big">${s.emoji}</div>
+      <div class="sugg-name">${s.nome}</div>
+      <div class="sugg-desc">${s.desc}</div>
+    </div>`).join('');
+}
+function usarSugestao(nome, emoji) {
+  document.getElementById('ev-nome').value = nome;
+  estado.emojiAtual = emoji;
+  document.querySelectorAll('.emoji-opt').forEach(x => x.classList.toggle('active', x.textContent === emoji));
+  syncPreview();
+  showPage('criar');
+  toast(`"${nome}" pronto para personalizar!`);
+}
+
+// ══ BOLEIAS ══
+function abrirBoleia(eventoId, nomeEvento) {
+  estado.boleiaEventoAtual = eventoId;
+  document.getElementById('boleia-modal-titulo').textContent = 'Boleias · ' + nomeEvento;
+  document.getElementById('boleia-escolha').style.display = 'block';
+  document.getElementById('boleia-form-dar').classList.remove('visible');
+  document.getElementById('boleia-form-pedir').classList.remove('visible');
+  renderListaBoleias(eventoId);
+  document.getElementById('boleia-modal').classList.add('open');
+}
+function fecharBoleia(e) {
+  if (e && e.target !== document.getElementById('boleia-modal')) return;
+  document.getElementById('boleia-modal').classList.remove('open');
+}
+function escolherBoleia(tipo) {
+  document.getElementById('boleia-escolha').style.display = 'none';
+  document.getElementById('boleia-form-dar').classList.toggle('visible', tipo === 'dar');
+  document.getElementById('boleia-form-pedir').classList.toggle('visible', tipo === 'pedir');
+}
+function voltarEscolha() {
+  document.getElementById('boleia-escolha').style.display = 'block';
+  document.getElementById('boleia-form-dar').classList.remove('visible');
+  document.getElementById('boleia-form-pedir').classList.remove('visible');
+}
+function setSeg(tipo, sentido) {
+  const seg = document.getElementById('seg-' + tipo);
+  seg.querySelectorAll('.seg-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['ida','volta','ambos'][i] === sentido);
+  });
+  if (tipo === 'dar') estado.boleiaSentidoDar = sentido;
+  else estado.boleiaSentidoPedir = sentido;
+}
+function submeterBoleia(tipo) {
+  const id = estado.boleiaEventoAtual;
+  if (!estado.boleias[id]) estado.boleias[id] = [];
+  if (tipo === 'dar') {
+    const hora = document.getElementById('boleia-hora-saida').value;
+    const zona = document.getElementById('boleia-zona-dar').value.trim();
+    const lug  = document.getElementById('boleia-lugares').value;
+    if (!hora || !zona) { toast('Preenche a hora e a zona!', 'ti-alert-triangle'); return; }
+    estado.boleias[id].push({ tipo:'dar', sentido:estado.boleiaSentidoDar, hora, zona, lugares:parseInt(lug), nome:'Tu' });
+  } else {
+    const hora = document.getElementById('boleia-hora-pronto').value;
+    const zona = document.getElementById('boleia-zona-pedir').value.trim();
+    if (!hora || !zona) { toast('Preenche a hora e a zona!', 'ti-alert-triangle'); return; }
+    estado.boleias[id].push({ tipo:'pedir', sentido:estado.boleiaSentidoPedir, hora, zona, lugares:null, nome:'Tu' });
+  }
+  voltarEscolha();
+  renderListaBoleias(id);
+  renderEventos();
+  toast('Boleia registada!');
+}
+function renderListaBoleias(eventoId) {
+  const lista = estado.boleias[eventoId] || [];
+  const wrap  = document.getElementById('boleia-lista-wrap');
+  if (!lista.length) { wrap.innerHTML = ''; return; }
+  const oferecem = lista.filter(b => b.tipo === 'dar');
+  const pedem    = lista.filter(b => b.tipo === 'pedir');
+  const sentidoTag = s => {
+    if (s === 'ida')   return '<span class="boleia-tag bt-ida"><i class="ti ti-arrow-right"></i> Ida</span>';
+    if (s === 'volta') return '<span class="boleia-tag bt-volta"><i class="ti ti-arrow-left"></i> Volta</span>';
+    return '<span class="boleia-tag bt-ambos"><i class="ti ti-arrows-exchange"></i> Ambos</span>';
+  };
+  const renderCard = b => {
+    const i2 = b.nome.split(' ').map(p => p[0]).join('').slice(0,2);
+    const det = b.tipo === 'dar' ? `Sai às ${b.hora} · ${b.zona} · ${b.lugares} lugar${b.lugares !== 1 ? 'es' : ''}` : `Pronto(a) às ${b.hora} · ${b.zona}`;
+    return `<div class="boleia-card">
+      <div class="boleia-av">${i2}</div>
+      <div class="boleia-info">
+        <div class="boleia-nome">${b.nome} <span class="boleia-tag ${b.tipo === 'dar' ? 'bt-dar' : 'bt-pedir'}">${b.tipo === 'dar' ? 'Dá boleia' : 'Precisa'}</span></div>
+        <div class="boleia-detalhe">${sentidoTag(b.sentido)} ${det}</div>
+      </div>
+    </div>`;
+  };
+  let html = '';
+  if (oferecem.length) html += `<div class="boleia-section"><div class="boleia-section-title"><i class="ti ti-steering-wheel" style="font-size:13px;color:var(--green);"></i> Oferecem boleia</div>${oferecem.map(renderCard).join('')}</div>`;
+  if (pedem.length)    html += `<div class="boleia-section"><div class="boleia-section-title"><i class="ti ti-hand-stop" style="font-size:13px;color:var(--amber);"></i> Precisam de boleia</div>${pedem.map(renderCard).join('')}</div>`;
+  wrap.innerHTML = html;
+}
+
+// ══ GRUPOS ══
+function renderGrupos() {
+  const c = document.getElementById('grupos-container');
+  if (!estado.grupos.length) {
+    c.innerHTML = `<div class="empty"><i class="ti ti-users-group"></i><p>Ainda não tens grupos.<br/>Cria um para convidar toda a gente de uma vez!</p></div>`;
+    return;
+  }
+  c.innerHTML = estado.grupos.map(g => `
+  <div class="grupo-card">
+    <div class="grupo-emoji">${g.emoji}</div>
+    <div class="grupo-info">
+      <div class="grupo-nome">${g.nome}</div>
+      <div class="grupo-membros">${g.membros.length} membro${g.membros.length !== 1 ? 's' : ''} · ${g.membros.slice(0,2).map(m => m.nome.split(' ')[0]).join(', ')}${g.membros.length > 2 ? '...' : ''}</div>
+    </div>
+    <div class="grupo-actions">
+      <button class="btn-xs" onclick="editarGrupo(${g.id}, event)"><i class="ti ti-pencil"></i></button>
+      <button class="btn-xs" onclick="eliminarGrupo(${g.id}, event)" style="color:var(--red);border-color:var(--red-bg);"><i class="ti ti-trash"></i></button>
+    </div>
+  </div>`).join('');
+}
+function abrirNovoGrupo() {
+  estado.grupoEditando = null; estado.membrosTemp = [];
+  document.getElementById('grupo-nome-input').value = '';
+  document.getElementById('grupo-emoji-input').value = '🎉';
+  document.getElementById('membro-list-preview').innerHTML = '';
+  document.getElementById('grupo-modal-titulo').textContent = 'Novo grupo';
+  document.getElementById('grupo-modal').classList.add('open');
+}
+function editarGrupo(id, e) {
+  e.stopPropagation();
+  const g = estado.grupos.find(x => x.id === id);
+  if (!g) return;
+  estado.grupoEditando = id; estado.membrosTemp = [...g.membros];
+  document.getElementById('grupo-nome-input').value  = g.nome;
+  document.getElementById('grupo-emoji-input').value = g.emoji;
+  document.getElementById('grupo-modal-titulo').textContent = 'Editar grupo';
+  renderMembrosTemp();
+  document.getElementById('grupo-modal').classList.add('open');
+}
+async function eliminarGrupo(id, e) {
+  e.stopPropagation();
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, deleteDoc } = window.fb;
+      await deleteDoc(doc(db, COL_GRUPOS, String(id)));
+    } catch (err) {
+      console.error('Erro ao eliminar grupo:', err);
+      toast('Erro ao eliminar', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    estado.grupos = estado.grupos.filter(g => g.id !== id);
+    renderGrupos();
+  }
+  toast('Grupo eliminado');
+}
+function fecharGrupo(e) { if (e && e.target !== document.getElementById('grupo-modal')) return; fecharGrupoModal(); }
+function fecharGrupoModal() { document.getElementById('grupo-modal').classList.remove('open'); }
+function adicionarMembro() {
+  const nome = document.getElementById('membro-nome-input').value.trim();
+  const tel  = document.getElementById('membro-tel-input').value.trim();
+  if (!nome || !tel) { toast('Preenche nome e telemóvel!', 'ti-alert-triangle'); return; }
+  estado.membrosTemp.push({ nome, tel });
+  document.getElementById('membro-nome-input').value = '';
+  document.getElementById('membro-tel-input').value  = '';
+  renderMembrosTemp();
+}
+function renderMembrosTemp() {
+  document.getElementById('membro-list-preview').innerHTML = estado.membrosTemp.map((m, i) => {
+    const i2 = m.nome.split(' ').map(p => p[0]).join('').slice(0,2);
+    return `<div class="membro-item">
+      <div class="membro-av">${i2}</div>
+      <div style="flex:1;"><div class="membro-nome">${m.nome}</div><div class="membro-tel">${m.tel}</div></div>
+      <button class="btn-xs" onclick="removerMembro(${i})" style="color:var(--red);border-color:var(--red-bg);"><i class="ti ti-x"></i></button>
+    </div>`;
+  }).join('');
+}
+function removerMembro(i) { estado.membrosTemp.splice(i, 1); renderMembrosTemp(); }
+async function guardarGrupo() {
+  const nome  = document.getElementById('grupo-nome-input').value.trim();
+  const emoji = document.getElementById('grupo-emoji-input').value.trim() || '🎉';
+  if (!nome)  { toast('Dá um nome ao grupo!', 'ti-alert-triangle'); return; }
+  if (!estado.membrosTemp.length) { toast('Adiciona pelo menos um membro!', 'ti-alert-triangle'); return; }
+  const dados = { nome, emoji, membros: [...estado.membrosTemp] };
+
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, setDoc, collection } = window.fb;
+      const ref = estado.grupoEditando
+        ? doc(db, COL_GRUPOS, String(estado.grupoEditando))
+        : doc(collection(db, COL_GRUPOS));
+      await setDoc(ref, dados, { merge: true });
+      toast(estado.grupoEditando ? 'Grupo atualizado!' : 'Grupo criado!');
+    } catch (err) {
+      console.error('Erro ao guardar grupo:', err);
+      toast('Erro ao guardar na base de dados', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    if (estado.grupoEditando) {
+      const g = estado.grupos.find(x => x.id === estado.grupoEditando);
+      Object.assign(g, dados);
+      toast('Grupo atualizado!');
+    } else {
+      estado.grupos.push({ id:Date.now(), ...dados });
+      toast('Grupo criado!');
+    }
+    renderGrupos();
+  }
+  fecharGrupoModal();
+}
+
+// ══ CONTACTOS ══
+let contactosEventoAtual = null;
+function abrirContactos(eventoId) {
+  const ev = estado.meus.find(e => e.id === eventoId);
+  if (!ev) return;
+  contactosEventoAtual = ev;
+  document.getElementById('contactos-modal-titulo').textContent = ev.emoji + ' ' + ev.nome;
+  const confirmados = ev.respostas.filter(r => r.status === 'yes' || r.status === 'late');
+  const lista = document.getElementById('contactos-lista');
+  if (!confirmados.length) {
+    lista.innerHTML = '<div style="padding:1.5rem;text-align:center;font-size:13px;color:var(--text-dim);">Ainda ninguém confirmou presença.</div>';
+  } else {
+    lista.innerHTML = confirmados.map(r => {
+      const i2 = ini(r.nome);
+      const at = r.status === 'late' ? `<span style="font-size:11px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:6px;">Atraso${r.horaAtraso ? ' ~' + r.horaAtraso : ''}</span>` : '';
+      return `<div class="contactos-item">
+        <div class="membro-av" style="background:var(--green-bg);color:var(--green);">${i2}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:var(--text);">${r.nome}${at}</div><div style="font-size:12px;color:var(--text-dim);">${r.tel}</div></div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('contactos-modal').classList.add('open');
+}
+function fecharContactos(e) {
+  if (e && e.target !== document.getElementById('contactos-modal')) return;
+  document.getElementById('contactos-modal').classList.remove('open');
+}
+function _textoContactos() {
+  if (!contactosEventoAtual) return '';
+  const ev = contactosEventoAtual;
+  const conf = ev.respostas.filter(r => r.status === 'yes' || r.status === 'late');
+  const linhas = conf.map(r => { const at = r.status === 'late' ? ` (chega ~${r.horaAtraso || '?'})` : ''; return `${r.nome}${at}: ${r.tel}`; });
+  return `${ev.emoji} ${ev.nome}\n${fmtData(ev.data, ev.hora)} · ${ev.local}\n\nConfirmados:\n` + linhas.join('\n');
+}
+function copiarContactos() { navigator.clipboard.writeText(_textoContactos()).catch(()=>{}); toast('Lista copiada!'); }
+function partilharContactos() {
+  if (navigator.share) navigator.share({ title: contactosEventoAtual?.nome, text: _textoContactos() });
+  else copiarContactos();
+}
+
+// ══ CALENDÁRIO (.ics) ══
+function _gerarICS(ev) {
+  function toICSDate(data, hora) {
+    if (!data) return null;
+    const d = data.replace(/-/g, '');
+    if (hora) { const h = hora.replace(':','') + '00'; return d + 'T' + h; }
+    return d;
+  }
+  const uid    = 'saidas-' + ev.id + '@saidas.app';
+  const agora  = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15);
+  const dtstart = toICSDate(ev.data, ev.hora);
+  let dtend;
+  if (ev.hora) {
+    const [h, m] = ev.hora.split(':').map(Number);
+    const endH = String(h + 2).padStart(2, '0');
+    dtend = toICSDate(ev.data, endH + ':' + String(m).padStart(2,'0'));
+  } else {
+    const d = new Date(ev.data + 'T00:00:00'); d.setDate(d.getDate() + 1);
+    dtend = d.toISOString().slice(0,10).replace(/-/g,'');
+  }
+  const descricao = [ev.notas ? 'Notas: ' + ev.notas : '', 'Criado em saidas.app'].filter(Boolean).join('\n');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//saidas.app//PT','CALSCALE:GREGORIAN','METHOD:PUBLISH',
+    'BEGIN:VEVENT','UID:' + uid,'DTSTAMP:' + agora,
+    ev.hora ? 'DTSTART:' + dtstart : 'DTSTART;VALUE=DATE:' + dtstart,
+    ev.hora ? 'DTEND:' + dtend   : 'DTEND;VALUE=DATE:' + dtend,
+    'SUMMARY:' + (ev.emoji ? ev.emoji + ' ' : '') + ev.nome,
+    'LOCATION:' + (ev.local || ''),
+    'DESCRIPTION:' + descricao.replace(/\n/g,'\\n'),
+    'END:VEVENT','END:VCALENDAR'].join('\r\n');
+}
+function _descarregarICS(ics, nomeEvento) {
+  const blob = new Blob([ics], { type:'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = nomeEvento.toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40) + '.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Ficheiro .ics descarregado!');
+}
+function exportarCalendario(eventoId) {
+  const ev = estado.meus.find(e => e.id === eventoId);
+  if (ev) _descarregarICS(_gerarICS(ev), ev.nome);
+}
+function exportarCalendarioConvite(eventoId) {
+  const ev = estado.convitesRecebidos.find(e => e.id === eventoId);
+  if (ev) _descarregarICS(_gerarICS({ ...ev, notas:'' }), ev.nome);
+}
+
+// ══ TOAST ══
+let toastTimer;
+function toast(msg, icon = 'ti-check') {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').className  = 'ti ' + icon;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ══ INIT ══
+initPersonalizacao();
+renderSugestoes();
+syncPreview();
+// renderDashboard()/renderBell() são chamados por renderTudo(), invocado
+// quando o Firebase (real ou modo demo) terminar de carregar os dados.
+</script>
+</body>
+</html>
