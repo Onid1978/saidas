@@ -1238,7 +1238,11 @@ function renderEvCard(ev, compact = false) {
   <div class="ev-card" id="evc-${ev.id}">
     <div class="ev-header">
       <div class="ev-name">${ev.emoji} ${ev.nome}</div>
-      ${badgeEvento(ev)}
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${badgeEvento(ev)}
+        <button class="btn-xs" onclick="editarEvento('${ev.id}')" title="Editar"><i class="ti ti-pencil"></i></button>
+        <button class="btn-xs" onclick="apagarEvento('${ev.id}')" title="Apagar" style="color:var(--red);border-color:var(--red-bg);"><i class="ti ti-trash"></i></button>
+      </div>
     </div>
     <div class="ev-meta">
       <span><i class="ti ti-calendar"></i> ${fmtData(ev.data, ev.hora)}</span>
@@ -1251,10 +1255,10 @@ function renderEvCard(ev, compact = false) {
         <span class="rsvp-text">${counts}</span>
       </div>
       <div class="ev-actions">
-        <button class="btn-xs" onclick="toggleRespostas(${ev.id})"><i class="ti ti-users"></i> Respostas</button>
-        <button class="btn-xs" onclick="abrirContactos(${ev.id})"><i class="ti ti-address-book"></i> Contactos</button>
-        <button class="btn-xs" onclick="exportarCalendario(${ev.id})"><i class="ti ti-calendar-plus"></i> .ics</button>
-        <button class="btn-xs" onclick="copiarLinkEvento(${ev.id})"><i class="ti ti-link"></i> Link</button>
+        <button class="btn-xs" onclick="toggleRespostas('${ev.id}')"><i class="ti ti-users"></i> Respostas</button>
+        <button class="btn-xs" onclick="abrirContactos('${ev.id}')"><i class="ti ti-address-book"></i> Contactos</button>
+        <button class="btn-xs" onclick="exportarCalendario('${ev.id}')"><i class="ti ti-calendar-plus"></i> .ics</button>
+        <button class="btn-xs" onclick="copiarLinkEvento('${ev.id}')"><i class="ti ti-link"></i> Link</button>
       </div>
     </div>
     <div id="resp-panel-${ev.id}" style="display:none; margin-top:10px;">${renderRespostas(ev)}</div>
@@ -1388,8 +1392,12 @@ function limparFormCriar() {
   document.getElementById('ev-notas').value = '';
   document.getElementById('ev-prazo').value = '';
   estado.emojiAtual = '🎉'; estado.corAtual = '#7c3aed';
+  estado.eventoEditandoId = null;
   document.querySelectorAll('.emoji-opt').forEach(x => x.classList.toggle('active', x.textContent === '🎉'));
-  document.querySelectorAll('.color-swatch').forEach(x => x.classList.toggle('active', x.style.background === 'rgb(124, 58, 237)'));
+  document.querySelectorAll('.color-swatch').forEach(x => x.classList.toggle('active', x.dataset.cor === '#7c3aed'));
+  // Restaura botão se estava em modo edição
+  const btn = document.querySelector('[onclick="guardarEdicaoEvento()"]');
+  if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Criar e gerar link'; btn.setAttribute('onclick','criarEvento()'); }
   syncPreview();
 }
 async function criarEvento() {
@@ -1597,6 +1605,7 @@ function initPersonalizacao() {
     const el = document.createElement('div');
     el.className = 'color-swatch' + (c === estado.corAtual ? ' active' : '');
     el.style.background = c;
+    el.dataset.cor = c;
     el.onclick = () => {
       estado.corAtual = c;
       document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('active'));
@@ -1623,6 +1632,83 @@ function usarSugestao(nome, emoji) {
   syncPreview();
   showPage('criar');
   toast(`"${nome}" pronto para personalizar!`);
+}
+
+// ══ EDITAR / APAGAR EVENTO ══
+function editarEvento(id) {
+  const ev = estado.meus.find(e => String(e.id) === String(id));
+  if (!ev) return;
+  estado.eventoEditandoId = id;
+  // Preenche o formulário de criar com os dados existentes
+  document.getElementById('ev-nome').value  = ev.nome  || '';
+  document.getElementById('ev-data').value  = ev.data  || '';
+  document.getElementById('ev-hora').value  = ev.hora  || '';
+  document.getElementById('ev-local').value = ev.local || '';
+  document.getElementById('ev-notas').value = ev.notas || '';
+  document.getElementById('ev-prazo').value = ev.prazo || '';
+  estado.emojiAtual = ev.emoji || '🎉';
+  estado.corAtual   = ev.cor   || '#7c3aed';
+  document.querySelectorAll('.emoji-opt').forEach(x => x.classList.toggle('active', x.textContent === estado.emojiAtual));
+  document.querySelectorAll('.color-swatch').forEach(x => x.classList.toggle('active', x.dataset.cor === estado.corAtual));
+  syncPreview();
+  // Muda o botão de "Criar" para "Guardar alterações"
+  document.querySelector('[onclick="criarEvento()"]').innerHTML = '<i class="ti ti-check"></i> Guardar alterações';
+  document.querySelector('[onclick="criarEvento()"]').setAttribute('onclick', 'guardarEdicaoEvento()');
+  showPage('criar');
+  toast('A editar — faz as alterações e clica em Guardar');
+}
+async function guardarEdicaoEvento() {
+  const id = estado.eventoEditandoId;
+  if (!id) return;
+  const nome = document.getElementById('ev-nome').value.trim();
+  if (!nome) { toast('Dá um nome ao evento!', 'ti-alert-triangle'); return; }
+  const dados = {
+    nome,
+    data:  document.getElementById('ev-data').value,
+    hora:  document.getElementById('ev-hora').value,
+    local: document.getElementById('ev-local').value.trim() || 'Local a definir',
+    notas: document.getElementById('ev-notas').value.trim(),
+    prazo: document.getElementById('ev-prazo').value,
+    emoji: estado.emojiAtual, cor: estado.corAtual,
+  };
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, updateDoc } = window.fb;
+      await updateDoc(doc(db, COL_EVENTOS, String(id)), dados);
+    } catch (err) {
+      console.error('Erro ao guardar edição:', err);
+      toast('Erro ao guardar', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    const ev = estado.meus.find(e => String(e.id) === String(id));
+    if (ev) Object.assign(ev, dados);
+    renderTudo();
+  }
+  estado.eventoEditandoId = null;
+  // Restaura botão original
+  const btn = document.querySelector('[onclick="guardarEdicaoEvento()"]');
+  if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Criar e gerar link'; btn.setAttribute('onclick','criarEvento()'); }
+  limparFormCriar();
+  showPage('eventos');
+  toast('Evento atualizado!');
+}
+async function apagarEvento(id) {
+  if (!confirm('Tens a certeza que queres apagar este evento? Esta ação não pode ser desfeita.')) return;
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, deleteDoc } = window.fb;
+      await deleteDoc(doc(db, COL_EVENTOS, String(id)));
+    } catch (err) {
+      console.error('Erro ao apagar evento:', err);
+      toast('Erro ao apagar', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    estado.meus = estado.meus.filter(e => String(e.id) !== String(id));
+    renderTudo();
+  }
+  toast('Evento apagado');
 }
 
 // ══ BOLEIAS ══
@@ -1720,10 +1806,26 @@ function renderGrupos() {
       <div class="grupo-membros">${g.membros.length} membro${g.membros.length !== 1 ? 's' : ''} · ${g.membros.slice(0,2).map(m => m.nome.split(' ')[0]).join(', ')}${g.membros.length > 2 ? '...' : ''}</div>
     </div>
     <div class="grupo-actions">
-      <button class="btn-xs" onclick="editarGrupo(${g.id}, event)"><i class="ti ti-pencil"></i></button>
-      <button class="btn-xs" onclick="eliminarGrupo(${g.id}, event)" style="color:var(--red);border-color:var(--red-bg);"><i class="ti ti-trash"></i></button>
+      <button class="btn-xs" onclick="partilharGrupo('${g.id}', event)" title="Partilhar contactos"><i class="ti ti-share"></i></button>
+      <button class="btn-xs" onclick="editarGrupo('${g.id}', event)"><i class="ti ti-pencil"></i></button>
+      <button class="btn-xs" onclick="eliminarGrupo('${g.id}', event)" style="color:var(--red);border-color:var(--red-bg);"><i class="ti ti-trash"></i></button>
     </div>
   </div>`).join('');
+}
+
+function partilharGrupo(id, e) {
+  e.stopPropagation();
+  const g = estado.grupos.find(x => String(x.id) === String(id));
+  if (!g) return;
+  const texto = `${g.emoji} ${g.nome}\n\n` +
+    g.membros.map(m => `${m.nome}: ${m.tel}`).join('\n');
+  if (navigator.share) {
+    navigator.share({ title: g.nome, text: texto }).catch(() => {});
+  } else {
+    _copiarTexto(texto).then(ok => {
+      toast(ok ? `Lista do grupo "${g.nome}" copiada!` : 'Copia manualmente', ok ? 'ti-check' : 'ti-alert-triangle');
+    });
+  }
 }
 function abrirNovoGrupo() {
   estado.grupoEditando = null; estado.membrosTemp = [];
@@ -1735,7 +1837,7 @@ function abrirNovoGrupo() {
 }
 function editarGrupo(id, e) {
   e.stopPropagation();
-  const g = estado.grupos.find(x => x.id === id);
+  const g = estado.grupos.find(x => String(x.id) === String(id));
   if (!g) return;
   estado.grupoEditando = id; estado.membrosTemp = [...g.membros];
   document.getElementById('grupo-nome-input').value  = g.nome;
