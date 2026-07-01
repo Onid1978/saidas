@@ -4,6 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Saídas · Dashboard</title>
+<meta name="theme-color" content="#0f0e17"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Saídas"/>
+<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22Sa%C3%ADdas%22%2C%22short_name%22%3A%22Sa%C3%ADdas%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0e17%22%2C%22theme_color%22%3A%22%230f0e17%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%3D%25270%25200%2564%2564%2527%253E%253Crect%2520width%3D%252764%2527%2520height%3D%252764%2527%2520rx%3D%252716%2527%2520fill%3D%2527%25237c3aed%2527%2F%253E%253Ctext%2520x%3D%252732%2527%2520y%3D%252746%2527%2520font-size%3D%252736%2527%2520text-anchor%3D%2527middle%2527%253E%25E2%259C%25A6%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700&display=swap" rel="stylesheet"/>
@@ -182,7 +188,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   border-radius: 14px; padding: 1rem 1.1rem;
 }
 .stat-label { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
-.stat-val { font-family: var(--font-display), 'Arial Black', sans-serif; font-size: 28px; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-val { font-family: var(--font), sans-serif; font-size: 30px; font-weight: 700; color: var(--text); line-height: 1; letter-spacing: -1px; }
 .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 .stat-card.accent { border-color: var(--accent); background: var(--accent-bg); }
 .stat-card.green  { border-color: var(--green);  background: var(--green-bg); }
@@ -1913,8 +1919,17 @@ function toast(msg, icon = 'ti-check') {
 initPersonalizacao();
 renderSugestoes();
 syncPreview();
-// renderDashboard()/renderBell() são chamados por renderTudo(), invocado
-// quando o Firebase (real ou modo demo) terminar de carregar os dados.
+
+// Service Worker para PWA
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    self.addEventListener('install', e => self.skipWaiting());
+    self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+  `;
+  const blob = new Blob([swCode], { type: 'application/javascript' });
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+}
 </script>
 </body>
 </html>
