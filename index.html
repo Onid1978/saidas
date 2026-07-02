@@ -35,7 +35,6 @@
   const db = getFirestore(app);
   const auth = getAuth(app);
 
-  // Expõe tudo na window para o script principal (não-módulo) usar
   window.fb = {
     db, auth,
     collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc,
@@ -81,6 +80,21 @@
   --sidebar-w: 220px;
   --invite-bg: #7c3aed;
   --invite-text: #ffffff;
+}
+html.light {
+  --bg: #f4f3fa;
+  --surface: #ffffff;
+  --surface2: #f0eff8;
+  --surface3: #e8e6f5;
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.15);
+  --text: #1a1830;
+  --text-muted: #6b6a80;
+  --text-dim: #9998b0;
+  --accent-bg: rgba(124,58,237,0.08);
+  --green-bg: rgba(16,185,129,0.08);
+  --amber-bg: rgba(245,158,11,0.08);
+  --red-bg: rgba(239,68,68,0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -434,10 +448,53 @@ textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
 .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface2); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 10px 16px; font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 8px; z-index: 500; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
 .toast.show { opacity: 1; transform: translateY(0); }
 
+/* ══ COMENTÁRIOS ══ */
+.comentarios-section { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+.comentarios-lista { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; max-height: 250px; overflow-y: auto; }
+.comentario-item { display: flex; gap: 8px; align-items: flex-start; }
+.comentario-av { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-light); font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.comentario-balao { background: var(--surface2); border-radius: 0 10px 10px 10px; padding: 8px 12px; flex: 1; }
+.comentario-autor { font-size: 11px; font-weight: 600; color: var(--accent-light); margin-bottom: 3px; }
+.comentario-texto { font-size: 13px; color: var(--text); line-height: 1.4; }
+.comentario-hora { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+.comentario-input-row { display: flex; gap: 8px; }
+.comentario-input-row input { flex: 1; }
+
+/* ══ PÁGINA PÚBLICA DO CONVITE ══ */
+.convite-publico {
+  min-height: 100vh; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 0 3rem;
+}
+.convite-pub-hero {
+  width: 100%; max-width: 520px;
+  border-radius: 0 0 28px 28px; overflow: hidden;
+  position: relative; min-height: 200px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding: 2rem 1.5rem 1.5rem;
+  background: var(--invite-bg);
+  margin-bottom: 1.5rem;
+}
+.convite-pub-hero-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; opacity: 0.35;
+}
+.convite-pub-hero-content { position: relative; z-index: 1; text-align: center; width: 100%; }
+.convite-pub-emoji { font-size: 48px; display: block; margin-bottom: 8px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3)); }
+.convite-pub-titulo { font-family: var(--font-display); font-size: 24px; color: #fff; margin-bottom: 4px; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+.convite-pub-sub { font-size: 14px; color: rgba(255,255,255,0.8); }
+.convite-pub-body { width: 100%; max-width: 520px; padding: 0 1rem; }
+.convite-pub-info { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; }
+.convite-pub-row { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.convite-pub-row:last-child { border-bottom: none; padding-bottom: 0; }
+.convite-pub-row i { color: var(--accent-light); font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.convite-pub-row span { font-size: 14px; color: var(--text); line-height: 1.5; }
+.convite-pub-rsvp { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; }
+.convite-pub-rsvp-titulo { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 1rem; }
+.convite-pub-comentarios { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; }
+
 /* ══ CONVITE 2-COL ══ */
 .convite-layout { display: grid; grid-template-columns: 1fr 340px; gap: 1.5rem; align-items: start; }
-
-/* ══ RESPONSIVE ══ */
 @media (max-width: 900px) {
   .sidebar { display: none; }
   .layout { flex-direction: column; }
@@ -489,6 +546,9 @@ input[type=time]::-webkit-calendar-picker-indicator {
   <div class="logo">saídas <span class="logo-spark">✦</span></div>
   <div class="topbar-right">
     <div class="fb-status" id="fb-status" style="display:none;"></div>
+    <button class="bell-btn" onclick="toggleModo()" id="btn-modo" title="Alternar modo claro/escuro" style="margin-right:2px;">
+      <i class="ti ti-sun" id="icon-modo"></i>
+    </button>
     <div class="bell-wrap" id="bell-wrap">
       <button class="bell-btn" onclick="toggleBell()" aria-label="Convites recebidos">
         <i class="ti ti-bell"></i>
@@ -711,6 +771,11 @@ input[type=time]::-webkit-calendar-picker-indicator {
       </div>
     </div>
 
+    <!-- ══ CONVITE PÚBLICO (abre via ?evento=slug) ══ -->
+    <div class="page" id="page-convite-publico">
+      <div class="convite-publico" id="convite-publico-conteudo"></div>
+    </div>
+
     <!-- ══ SUGESTÕES ══ -->
     <div class="page" id="page-sugestoes">
       <div class="page-header">
@@ -832,6 +897,22 @@ input[type=time]::-webkit-calendar-picker-indicator {
         <button class="btn btn-ghost" style="flex:1;justify-content:center;" onclick="copiarContactos()"><i class="ti ti-copy"></i> Copiar lista</button>
         <button class="btn btn-primary" style="flex:1;justify-content:center;" onclick="partilharContactos()"><i class="ti ti-share"></i> Partilhar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMENTÁRIOS (organizador) -->
+<div class="modal-overlay" id="comentarios-modal" onclick="fecharComentariosModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-message-circle"></i> <span id="comentarios-modal-titulo">Comentários</span></div>
+    <div class="comentarios-lista" id="org-comentarios-lista" style="max-height:300px;">
+      <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:1rem;">Sem comentários ainda.</div>
+    </div>
+    <div class="comentario-input-row" style="margin-top:0.75rem;">
+      <input type="text" id="org-comentario-nome" placeholder="O teu nome" style="max-width:130px;"/>
+      <input type="text" id="org-comentario-texto" placeholder="Escreve um comentário..." onkeydown="if(event.key==='Enter')enviarComentarioOrg()"/>
+      <button class="btn btn-primary" onclick="enviarComentarioOrg()" style="padding:9px 12px;"><i class="ti ti-send"></i></button>
     </div>
   </div>
 </div>
@@ -1009,19 +1090,245 @@ async function verificarLinkPublico() {
 function abrirEventoPublico(ev) {
   estado.eventoPublicoAtual = ev;
   estado.convitePreviewAtual = null;
-  preencherConvite(ev.nome, ev.data, ev.hora, ev.local, ev.notas, ev.prazo, ev.emoji, ev.cor || '#7c3aed');
-  document.getElementById('link-url').textContent = `${location.origin}${location.pathname}?evento=${ev.slug}`;
-  document.getElementById('rsvp-nome').value = '';
-  document.getElementById('rsvp-tel').value = '';
-  // Esconde a navegação — quem recebe o link só vê o convite, não o dashboard inteiro
+  // Esconde navegação — quem recebe o link só vê o convite
   document.querySelector('.sidebar').style.display = 'none';
   document.querySelector('.mobile-nav').style.display = 'none';
-  PAGE_IDS.forEach(p => p !== 'convite' && document.getElementById('nav-' + p)?.remove());
-  showPage('convite');
-  document.getElementById('envelope').classList.remove('open');
-  estado.envelopeAberto = false;
-  document.getElementById('invite-content').classList.remove('visible');
-  document.getElementById('env-hint').style.display = 'flex';
+  document.querySelector('.topbar').style.display = 'none';
+  renderConvitePublico(ev);
+  showPage('convite-publico');
+  // Ouve comentários em tempo real
+  if (!estado.modoDemo && window.fb?.db) {
+    const { db, collection, onSnapshot, query } = window.fb;
+    window._unsubComentarios = onSnapshot(
+      query(collection(db, COL_EVENTOS, ev.id, 'comentarios')),
+      snap => {
+        const comentarios = [];
+        snap.forEach(d => comentarios.push({ id: d.id, ...d.data() }));
+        comentarios.sort((a,b) => (a.criadoEm?.seconds||0) - (b.criadoEm?.seconds||0));
+        renderComentarios(comentarios);
+      }
+    );
+  }
+}
+
+function renderConvitePublico(ev) {
+  const prazoHtml = ev.prazo ? `<div style="background:var(--amber-bg);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--amber);margin-bottom:1rem;"><i class="ti ti-clock"></i> Responde até <strong>${fmtData(ev.prazo)}</strong></div>` : '';
+  const fotoHtml = ev.fotoUrl ? `<img class="convite-pub-hero-img" src="${ev.fotoUrl}" alt="foto do evento"/>` : '';
+  const notasHtml = ev.notas ? `<div class="convite-pub-row"><i class="ti ti-note"></i><span>${ev.notas}</span></div>` : '';
+
+  document.getElementById('convite-publico-conteudo').innerHTML = `
+    <div class="convite-pub-hero" style="background:${ev.cor || '#7c3aed'};">
+      ${fotoHtml}
+      <div class="convite-pub-hero-content">
+        <span class="convite-pub-emoji">${ev.emoji || '🎉'}</span>
+        <div class="convite-pub-titulo">${ev.nome}</div>
+        <div class="convite-pub-sub">Estás convidado(a)!</div>
+      </div>
+    </div>
+    <div class="convite-pub-body">
+      <div class="convite-pub-info">
+        ${ev.data ? `<div class="convite-pub-row"><i class="ti ti-calendar"></i><span>${fmtData(ev.data, ev.hora)}</span></div>` : ''}
+        ${ev.local ? `<div class="convite-pub-row"><i class="ti ti-map-pin"></i><span>${ev.local}</span></div>` : ''}
+        ${notasHtml}
+      </div>
+      ${prazoHtml}
+      <div class="convite-pub-rsvp">
+        <div class="convite-pub-rsvp-titulo">A tua resposta</div>
+        <div class="form-grid" style="margin-bottom:0.75rem;">
+          <div class="form-field"><label>Nome</label><input type="text" id="pub-rsvp-nome" placeholder="Ex: Sofia Mendes"/></div>
+          <div class="form-field"><label>Telemóvel</label><input type="tel" id="pub-rsvp-tel" placeholder="+351 9XX XXX XXX"/></div>
+        </div>
+        <div id="pub-resposta-atual" style="display:none;margin-bottom:0.75rem;"></div>
+        <div class="rsvp-btns">
+          <button class="rsvp-btn rsvp-yes" onclick="responderPublico('yes')"><i class="ti ti-check"></i> Sim, vou!</button>
+          <button class="rsvp-btn rsvp-late" onclick="togglePubAtraso()"><i class="ti ti-clock-exclamation"></i> Vou, mas chego atrasado(a)</button>
+          <button class="rsvp-btn rsvp-later" onclick="responderPublico('later')"><i class="ti ti-dots"></i> Confirmo mais tarde</button>
+          <button class="rsvp-btn rsvp-no" onclick="responderPublico('no')"><i class="ti ti-x"></i> Não posso</button>
+        </div>
+        <div class="atraso-input-wrap" id="pub-atraso-wrap">
+          <div class="form-grid">
+            <div class="form-field"><label>Hora prevista de chegada</label><input type="time" id="pub-atraso-hora"/></div>
+            <div class="form-field"><label>Nota (opcional)</label><input type="text" id="pub-atraso-nota" placeholder="Ex: tenho médico antes"/></div>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn btn-primary" style="width:100%;" onclick="responderPublico('late')"><i class="ti ti-check"></i> Confirmar com atraso</button>
+          </div>
+        </div>
+      </div>
+      <div class="convite-pub-comentarios">
+        <div class="convite-pub-rsvp-titulo"><i class="ti ti-message-circle" style="font-size:13px;margin-right:4px;"></i> Comentários</div>
+        <div class="comentarios-lista" id="pub-comentarios-lista">
+          <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:1rem;">Sem comentários ainda. Sê o primeiro!</div>
+        </div>
+        <div class="comentario-input-row" style="margin-top:0.75rem;">
+          <input type="text" id="pub-comentario-nome" placeholder="O teu nome" style="max-width:130px;"/>
+          <input type="text" id="pub-comentario-texto" placeholder="Escreve um comentário..." onkeydown="if(event.key==='Enter')enviarComentario()"/>
+          <button class="btn btn-primary" onclick="enviarComentario()" style="padding:9px 12px;"><i class="ti ti-send"></i></button>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem;text-align:center;">
+        <div class="link-box" style="justify-content:center;">
+          <i class="ti ti-link" style="color:var(--accent-light);"></i>
+          <span class="link-url">${location.href}</span>
+          <button class="link-btn" onclick="copiarLink()" title="Copiar link"><i class="ti ti-copy"></i></button>
+          <button class="link-btn" onclick="partilharLink()" title="Partilhar"><i class="ti ti-share"></i></button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function togglePubAtraso() {
+  document.getElementById('pub-atraso-wrap')?.classList.toggle('visible');
+}
+
+async function responderPublico(tipo) {
+  const nome = document.getElementById('pub-rsvp-nome')?.value.trim();
+  const tel  = document.getElementById('pub-rsvp-tel')?.value.trim();
+  if (!nome || !tel) { toast('Preenche o nome e o telemóvel!', 'ti-alert-triangle'); return; }
+  if (tipo === 'late') {
+    const hora = document.getElementById('pub-atraso-hora')?.value;
+    if (!hora) { toast('Indica a hora prevista de chegada!', 'ti-alert-triangle'); return; }
+  }
+  document.getElementById('pub-atraso-wrap')?.classList.remove('visible');
+
+  const resposta = { nome, tel, status: tipo };
+  if (tipo === 'late') {
+    resposta.horaAtraso = document.getElementById('pub-atraso-hora')?.value;
+    resposta.notaAtraso = document.getElementById('pub-atraso-nota')?.value.trim();
+  }
+
+  if (!estado.modoDemo && window.fb?.db && estado.eventoPublicoAtual) {
+    try {
+      const { db, doc, getDoc, updateDoc } = window.fb;
+      const ref = doc(db, COL_EVENTOS, estado.eventoPublicoAtual.id);
+      const snap = await getDoc(ref);
+      // Substitui resposta anterior do mesmo tel (editar resposta)
+      const atuais = (snap.data()?.respostas || []).filter(r => r.tel !== tel);
+      atuais.push(resposta);
+      await updateDoc(ref, { respostas: atuais });
+      // Feedback visual da resposta atual
+      const statusLabels = { yes:'Confirmado ✓', late:'Confirmado com atraso ✓', later:'A confirmar...', no:'Não vai' };
+      const statusCores  = { yes:'var(--green)', late:'var(--amber)', later:'var(--accent-light)', no:'var(--text-dim)' };
+      const el = document.getElementById('pub-resposta-atual');
+      if (el) {
+        el.style.display = 'block';
+        el.innerHTML = `<div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;"><i class="ti ti-check" style="color:${statusCores[tipo]};"></i> <span style="color:${statusCores[tipo]};font-weight:500;">${statusLabels[tipo]}</span> <span style="color:var(--text-dim);">— podes mudar a qualquer momento</span></div>`;
+      }
+    } catch (err) {
+      console.error('Erro ao responder:', err);
+      toast('Erro ao enviar resposta', 'ti-alert-triangle');
+      return;
+    }
+  } else {
+    toast('Modo demo — resposta não foi gravada', 'ti-info-circle');
+  }
+  const msgs = { yes:'Resposta enviada — até lá! 🎉', late:'Confirmado com atraso!', later:'Registado! Responde quando souberes.', no:'Resposta registada. Noutra vez!' };
+  toast(msgs[tipo]);
+}
+
+// ══ COMENTÁRIOS ══
+async function enviarComentario() {
+  const nome  = document.getElementById('pub-comentario-nome')?.value.trim();
+  const texto = document.getElementById('pub-comentario-texto')?.value.trim();
+  if (!nome || !texto) { toast('Preenche o nome e o comentário!', 'ti-alert-triangle'); return; }
+  if (!estado.eventoPublicoAtual) return;
+
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, setDoc, collection, serverTimestamp } = window.fb;
+      const ref = doc(collection(db, COL_EVENTOS, estado.eventoPublicoAtual.id, 'comentarios'));
+      await setDoc(ref, { nome, texto, criadoEm: serverTimestamp() });
+      document.getElementById('pub-comentario-texto').value = '';
+    } catch (err) {
+      console.error('Erro ao comentar:', err);
+      toast('Erro ao enviar comentário', 'ti-alert-triangle');
+    }
+  } else {
+    // Modo demo — adiciona localmente
+    const lista = document.getElementById('pub-comentarios-lista');
+    if (lista) {
+      const i2 = ini(nome);
+      lista.innerHTML += `<div class="comentario-item"><div class="comentario-av">${i2}</div><div class="comentario-balao"><div class="comentario-autor">${nome}</div><div class="comentario-texto">${texto}</div><div class="comentario-hora">agora</div></div></div>`;
+      lista.scrollTop = lista.scrollHeight;
+    }
+    document.getElementById('pub-comentario-texto').value = '';
+  }
+}
+
+function renderComentarios(comentarios) {
+  const lista = document.getElementById('pub-comentarios-lista');
+  if (!lista) return;
+  if (!comentarios.length) {
+    lista.innerHTML = '<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:1rem;">Sem comentários ainda. Sê o primeiro!</div>';
+    return;
+  }
+  lista.innerHTML = comentarios.map(c => {
+    const i2 = ini(c.nome || '?');
+    const hora = c.criadoEm?.seconds ? new Date(c.criadoEm.seconds * 1000).toLocaleTimeString('pt', { hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="comentario-item">
+      <div class="comentario-av">${i2}</div>
+      <div class="comentario-balao">
+        <div class="comentario-autor">${c.nome}</div>
+        <div class="comentario-texto">${c.texto}</div>
+        ${hora ? `<div class="comentario-hora">${hora}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  lista.scrollTop = lista.scrollHeight;
+}
+
+// Comentários também nos eventos do dashboard (organizador vê)
+function abrirComentariosEvento(eventoId) {
+  // Abre modal de comentários para o organizador
+  document.getElementById('comentarios-modal-titulo').textContent = 'Comentários';
+  document.getElementById('comentarios-modal').classList.add('open');
+  estado.comentariosEventoAtual = eventoId;
+  document.getElementById('org-comentario-nome').value = 'Eu (organizador)';
+  if (!estado.modoDemo && window.fb?.db) {
+    const { db, collection, onSnapshot, query } = window.fb;
+    if (window._unsubOrgComentarios) window._unsubOrgComentarios();
+    window._unsubOrgComentarios = onSnapshot(
+      query(collection(db, COL_EVENTOS, String(eventoId), 'comentarios')),
+      snap => {
+        const lista = [];
+        snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
+        lista.sort((a,b) => (a.criadoEm?.seconds||0) - (b.criadoEm?.seconds||0));
+        renderComentariosOrg(lista);
+      }
+    );
+  }
+}
+function renderComentariosOrg(comentarios) {
+  const lista = document.getElementById('org-comentarios-lista');
+  if (!lista) return;
+  if (!comentarios.length) { lista.innerHTML = '<div style="font-size:13px;color:var(--text-dim);text-align:center;padding:1rem;">Sem comentários ainda.</div>'; return; }
+  lista.innerHTML = comentarios.map(c => {
+    const i2 = ini(c.nome || '?');
+    const hora = c.criadoEm?.seconds ? new Date(c.criadoEm.seconds * 1000).toLocaleTimeString('pt', { hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="comentario-item"><div class="comentario-av">${i2}</div><div class="comentario-balao"><div class="comentario-autor">${c.nome}</div><div class="comentario-texto">${c.texto}</div>${hora ? `<div class="comentario-hora">${hora}</div>` : ''}</div></div>`;
+  }).join('');
+  lista.scrollTop = lista.scrollHeight;
+}
+async function enviarComentarioOrg() {
+  const nome  = document.getElementById('org-comentario-nome')?.value.trim();
+  const texto = document.getElementById('org-comentario-texto')?.value.trim();
+  if (!nome || !texto) return;
+  const eventoId = estado.comentariosEventoAtual;
+  if (!eventoId) return;
+  if (!estado.modoDemo && window.fb?.db) {
+    try {
+      const { db, doc, setDoc, collection, serverTimestamp } = window.fb;
+      const ref = doc(collection(db, COL_EVENTOS, String(eventoId), 'comentarios'));
+      await setDoc(ref, { nome, texto, criadoEm: serverTimestamp() });
+      document.getElementById('org-comentario-texto').value = '';
+    } catch (err) { toast('Erro ao comentar', 'ti-alert-triangle'); }
+  }
+}
+function fecharComentariosModal(e) {
+  if (e && e.target !== document.getElementById('comentarios-modal')) return;
+  document.getElementById('comentarios-modal').classList.remove('open');
+  if (window._unsubOrgComentarios) { window._unsubOrgComentarios(); window._unsubOrgComentarios = null; }
 }
 
 window.addEventListener('fb-ready', iniciarFirebase);
@@ -1033,8 +1340,26 @@ window.addEventListener('fb-error', () => {
 // Se o Firebase não responder em 4s (config por preencher), cai em modo demo
 setTimeout(() => { if (estado.meus.length === 0 && estado.modoDemo) iniciarFirebase(); }, 4000);
 
-// ══ NAVEGAÇÃO ══
-const PAGE_IDS = ['dashboard','eventos','convites','criar','convite','sugestoes','grupos'];
+// ══ MODO CLARO/ESCURO ══
+function toggleModo() {
+  const isLight = document.documentElement.classList.toggle('light');
+  document.getElementById('icon-modo').className = isLight ? 'ti ti-moon' : 'ti ti-sun';
+  localStorage.setItem('saidas-modo', isLight ? 'light' : 'dark');
+}
+(function initModo() {
+  const saved = localStorage.getItem('saidas-modo');
+  if (saved === 'light') {
+    document.documentElement.classList.add('light');
+    // ícone atualizado depois do DOM carregar
+    window.addEventListener('DOMContentLoaded', () => {
+      const el = document.getElementById('icon-modo');
+      if (el) el.className = 'ti ti-moon';
+    });
+  }
+})();
+
+
+const PAGE_IDS = ['dashboard','eventos','convites','criar','convite','convite-publico','sugestoes','grupos'];
 
 function showPage(name) {
   PAGE_IDS.forEach(p => {
@@ -1256,6 +1581,7 @@ function renderEvCard(ev, compact = false) {
       </div>
       <div class="ev-actions">
         <button class="btn-xs" onclick="toggleRespostas('${ev.id}')"><i class="ti ti-users"></i> Respostas</button>
+        <button class="btn-xs" onclick="abrirComentariosEvento('${ev.id}')"><i class="ti ti-message-circle"></i> Chat</button>
         <button class="btn-xs" onclick="abrirContactos('${ev.id}')"><i class="ti ti-address-book"></i> Contactos</button>
         <button class="btn-xs" onclick="exportarCalendario('${ev.id}')"><i class="ti ti-calendar-plus"></i> .ics</button>
         <button class="btn-xs" onclick="copiarLinkEvento('${ev.id}')"><i class="ti ti-link"></i> Link</button>
