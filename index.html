@@ -807,7 +807,15 @@ input[type=time]::-webkit-calendar-picker-indicator {
     <button class="mobile-nav-btn" onclick="showPage('eventos')" id="mnav-eventos"><i class="ti ti-calendar-event"></i>Eventos</button>
     <button class="mobile-nav-btn" onclick="showPage('criar')" id="mnav-criar"><i class="ti ti-plus"></i>Criar</button>
     <button class="mobile-nav-btn" onclick="showPage('convites')" id="mnav-convites"><i class="ti ti-inbox"></i>Convites</button>
-    <button class="mobile-nav-btn" onclick="showPage('grupos')" id="mnav-grupos"><i class="ti ti-users-group"></i>Grupos</button>
+    <button class="mobile-nav-btn" onclick="toggleMobileMenu()" id="mnav-mais"><i class="ti ti-dots"></i>Mais</button>
+  </div>
+  <!-- Menu "Mais" mobile -->
+  <div id="mobile-mais-menu" style="display:none; position:fixed; bottom:65px; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); padding:0.5rem; z-index:199;">
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+      <button class="mobile-nav-btn" onclick="showPage('sugestoes');toggleMobileMenu()" id="mnav-sugestoes" style="flex-direction:column;padding:10px 6px;border-radius:10px;background:var(--surface2);"><i class="ti ti-sparkles"></i>Sugestões</button>
+      <button class="mobile-nav-btn" onclick="showPage('grupos');toggleMobileMenu()" id="mnav-grupos" style="flex-direction:column;padding:10px 6px;border-radius:10px;background:var(--surface2);"><i class="ti ti-users-group"></i>Grupos</button>
+      <button class="mobile-nav-btn" onclick="showPage('convite');toggleMobileMenu()" id="mnav-convite" style="flex-direction:column;padding:10px 6px;border-radius:10px;background:var(--surface2);"><i class="ti ti-envelope"></i>Convite</button>
+    </div>
   </div>
 </nav>
 
@@ -1361,6 +1369,22 @@ function toggleModo() {
   }
 })();
 
+
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-mais-menu');
+  const btn  = document.getElementById('mnav-mais');
+  const aberto = menu.style.display === 'none' || menu.style.display === '';
+  menu.style.display = aberto ? 'block' : 'none';
+  btn.classList.toggle('active', aberto);
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('mobile-mais-menu');
+  const btn  = document.getElementById('mnav-mais');
+  if (menu && !menu.contains(e.target) && btn && !btn.contains(e.target)) {
+    menu.style.display = 'none';
+    btn?.classList.remove('active');
+  }
+});
 
 const PAGE_IDS = ['dashboard','eventos','convites','criar','convite','convite-publico','sugestoes','grupos'];
 
